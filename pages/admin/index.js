@@ -181,13 +181,13 @@ export default function AdminPage() {
                 return `${y}-${m}-${d}T${b.time}:00`;
               })(),
               extendedProps: {
-                services: b.services || [],
+                services: Array.isArray(b.services) ? b.services : (b.services ? b.services.split(',').map(s => s.trim()) : []),
                 totalPrice: parseFloat(b.totalPrice) || 0,
                 phone: b.phone || "",
               },
             })),
             eventDidMount(info) {
-              info.el.title = `${info.event.title}\n${info.event.extendedProps.services?.join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
+              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
             },
           });
           calendar.render();
@@ -647,7 +647,7 @@ export default function AdminPage() {
                         </div>
                         {b.services?.length > 0 && (
                           <div className="card-services">
-                            💅 {b.services.join(", ")}
+                            💅 {(Array.isArray(b.services) ? b.services : [b.services]).join(", ")}
                           </div>
                         )}
                         <div className="card-price">
