@@ -1,7 +1,7 @@
 // Simple password-based admin auth using a secure cookie
 import { serialize } from "cookie";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "pavnailed2025";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Pp240408";
 
 export default function handler(req, res) {
   if (req.method !== "POST") {
