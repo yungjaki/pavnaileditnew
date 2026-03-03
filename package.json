@@ -1,0 +1,24 @@
+{
+  "name": "pavnailedit",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.11",
+    "@fullcalendar/daygrid": "^6.1.11",
+    "cloudinary": "^2.7.0",
+    "cookie": "^0.7.0",
+    "firebase-admin": "^13.5.0",
+    "flatpickr": "^4.6.13",
+    "formidable": "^3.5.4",
+    "ical-generator": "^9.0.0",
+    "next": "14.2.5",
+    "nodemailer": "^6.9.14",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

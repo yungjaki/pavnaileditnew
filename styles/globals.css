@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --pink-light: #fde8f0;
+  --pink-mid: #f9a1c2;
+  --pink-deep: #ff6ec4;
+  --pink-soft: #f8b7d1;
+  --text-dark: #2c1a24;
+  --text-mid: #6b4559;
+  --text-light: #b08097;
+  --bg: #fdf5f8;
+  --white: #ffffff;
+  --radius: 20px;
+  --shadow: 0 10px 40px rgba(249,161,194,0.2);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--bg);
+  color: var(--text-dark);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+
+input, select, textarea {
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Flatpickr overrides */
+.flatpickr-calendar {
+  background: #fff0f6 !important;
+  border: 2px solid #f9a1c2 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 10px 30px rgba(255,110,196,0.25) !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: #ff6ec4 !important;
+  border-color: #ff6ec4 !important;
+}
+
+.flatpickr-day.almost-full {
+  background: #ffe0eb;
+  color: #ff6ec4;
+  font-weight: 600;
+}
+
+.flatpickr-day.full {
+  background: #ff6ec4;
+  color: #fff;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+  fill: #ff6ec4 !important;
+}
