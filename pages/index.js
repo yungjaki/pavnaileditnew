@@ -569,7 +569,7 @@ export default function Home() {
         </section>
 
         <footer>
-          <p>© 2025 PavNailedIt · <a href="https://instagram.com/pavnailedit" style={{color:'var(--pink-mid)'}}>@pavnailedit</a></p>
+          <p>© 2025 PavNailedIt · <a href="https://instagram.com/pav.naile.dit" style={{color:'var(--pink-mid)'}}>@pav.nailed.it</a></p>
         </footer>
       </div>
 

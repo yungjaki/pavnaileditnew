@@ -6,7 +6,7 @@ const SERVICES = [
   { name: "Гел - къси нокти", price: 18 },
   { name: "Гел - дълги нокти", price: 20 },
   { name: "Изграждане", price: 28 },
-  { name: "1 нокът", price: 1.5, countable: true, max: 5 },
+  { name: "1 нокът", price: 1.50, countable: true, max: 5 },
   { name: "Френски", price: 2 },
   { name: "Камъни", price: 0.2 },
   { name: "Стикери", price: 1 },
