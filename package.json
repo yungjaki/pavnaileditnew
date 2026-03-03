@@ -19,6 +19,7 @@
     "cookie": "^0.7.0",
     "@fullcalendar/core": "^6.1.11",
     "@fullcalendar/daygrid": "^6.1.11",
-    "ogl": "^1.0.7"
+    "ogl": "^1.0.7",
+    "flatpickr": "^4.6.13"
   }
 }
