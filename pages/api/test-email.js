@@ -11,8 +11,8 @@ export default async function handler(req, res) {
       totalPrice: "50.00",
       designUrl: "",
     });
-    return res.status(200).json({ success: true, message: "Email sent!" });
+    return res.status(200).json({ success: true });
   } catch (e) {
-    return res.status(500).json({ error: e.message, stack: e.stack });
+    return res.status(500).json({ error: e.message });
   }
 }
