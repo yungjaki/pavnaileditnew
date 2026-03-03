@@ -3,27 +3,27 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 
 const SERVICES = [
-  { name: "Гел - къси нокти", price: 35 },
-  { name: "Гел - дълги нокти", price: 40 },
-  { name: "Изграждане", price: 55 },
-  { name: "1 нокът", price: 3, countable: true, max: 5 },
-  { name: "Френски", price: 4 },
-  { name: "Камъни", price: 0.4 },
-  { name: "Стикери", price: 2 },
-  { name: "Буква", price: 2 },
-  { name: "Сребърно/златно", price: 4 },
+  { name: "Гел - къси нокти", price: 18 },
+  { name: "Гел - дълги нокти", price: 20 },
+  { name: "Изграждане", price: 28 },
+  { name: "1 нокът", price: 1.5, countable: true, max: 5 },
+  { name: "Френски", price: 2 },
+  { name: "Камъни", price: 0.2 },
+  { name: "Стикери", price: 1 },
+  { name: "Буква", price: 1 },
+  { name: "Сребърно/златно", price: 2 },
 ];
 
 const ADDONS = [
-  { name: "3D цветя", price: 8, countable: true, max: 4 },
-  { name: "3D линии", price: 8 },
-  { name: "Blooming gel", price: 6 },
-  { name: "Blooming gel цвете", price: 8 },
-  { name: "Панделка", price: 4, countable: true, max: 4 },
-  { name: "Аура", price: 7 },
-  { name: "Омбре", price: 7 },
-  { name: "Бяло омбре", price: 8 },
-  { name: "Животински дизайн", price: 6 },
+  { name: "3D цветя", price: 4, countable: true, max: 4 },
+  { name: "3D линии", price: 4 },
+  { name: "Blooming gel", price: 3 },
+  { name: "Blooming gel цвете", price: 4 },
+  { name: "Панделка", price: 2, countable: true, max: 4 },
+  { name: "Аура", price: 3.5 },
+  { name: "Омбре", price: 3.5 },
+  { name: "Бяло омбре", price: 4 },
+  { name: "Животински дизайн", price: 3 },
 ];
 
 const TIMES = ["10:00", "14:00", "16:30"];
@@ -156,7 +156,7 @@ export default function Book() {
     if (card.used) { setGiftFeedback("❌ Тази карта вече е използвана"); return; }
     setGiftDiscount(card.amount);
     setGiftValid(true);
-    setGiftFeedback(`✅ Приложена отстъпка: ${card.amount}лв`);
+    setGiftFeedback(`✅ Приложена отстъпка: ${card.amount}€`);
   };
 
   const handleSubmit = async () => {
@@ -215,7 +215,7 @@ export default function Book() {
       >
         {svc.name}
         {active && svc.countable && <span className="chip-count">{count}</span>}
-        {active && <span className="chip-price">{svc.price}лв</span>}
+        {active && <span className="chip-price">{svc.price}€</span>}
         <style jsx>{`
           .chip {
             display: inline-flex;
@@ -493,10 +493,10 @@ export default function Book() {
           {/* Total */}
           <div className="total">
             <div className="total-label">Общо</div>
-            <div className="total-amount">{totalPrice.toFixed(2)} лв</div>
+            <div className="total-amount">{totalPrice.toFixed(2)} €</div>
             {giftDiscount > 0 && (
               <div style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '4px'}}>
-                (спестяваш {giftDiscount}лв с карта)
+                (спестяваш {giftDiscount}€ с карта)
               </div>
             )}
           </div>

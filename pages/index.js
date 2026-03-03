@@ -1,6 +1,20 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import dynamic from "next/dynamic";
+const CircularGallery = dynamic(() => import("../components/CircularGallery"), { ssr: false });
+
+const GALLERY_PREVIEW = [
+  { image: "/nails/1/nail1.jpg", text: "" },
+  { image: "/nails/2/nail1.jpg", text: "" },
+  { image: "/nails/3/nail1.jpg", text: "" },
+  { image: "/nails/4/nail1.jpg", text: "" },
+  { image: "/nails/5/nail1.jpg", text: "" },
+  { image: "/nails/6/nail1.jpg", text: "" },
+  { image: "/nails/7/nail1.jpg", text: "" },
+  { image: "/nails/8/nail1.jpg", text: "" },
+];
 
 const REVIEWS = [
   { text: "Тя е истински професионалист и работи с огромно желание и любов, а резултатите са зашеметяващи! Препоръчвам я с две ръце ❤️❤️", author: "Ивка" },
@@ -35,12 +49,13 @@ function hasActiveBooking() {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [hasBooking, setHasBooking] = useState(false);
 
   useEffect(() => {
     setHasBooking(hasActiveBooking());
-    const onScroll = () => setScrolled(window.scrollY > 150);
+    const onScroll = () => setScrolled(window.scrollY > 300);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -63,16 +78,16 @@ export default function Home() {
       <style jsx>{`
         .page { min-height: 100vh; }
 
-        /* HEADER */
+        /* ── HEADER ── */
         header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1.5rem 3rem;
+          padding: 1.2rem 3rem;
           position: sticky;
           top: 0;
-          background: rgba(253,245,248,0.85);
-          backdrop-filter: blur(12px);
+          background: rgba(253,245,248,0.88);
+          backdrop-filter: blur(14px);
           z-index: 100;
           border-bottom: 1px solid rgba(249,161,194,0.2);
         }
@@ -85,7 +100,7 @@ export default function Home() {
         }
         nav { display: flex; gap: 2rem; }
         nav a {
-          font-size: 0.85rem;
+          font-size: 0.82rem;
           letter-spacing: 1.5px;
           font-weight: 500;
           color: var(--text-mid);
@@ -93,22 +108,38 @@ export default function Home() {
           text-transform: uppercase;
         }
         nav a:hover { color: var(--pink-deep); }
-        .btn-book {
-          background: linear-gradient(135deg, var(--pink-soft), var(--pink-mid));
-          color: #fff;
-          padding: 0.6rem 1.5rem;
-          border-radius: 50px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          letter-spacing: 1px;
-          transition: all 0.3s;
-          box-shadow: 0 4px 15px rgba(249,161,194,0.4);
-        }
-        .btn-book:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(249,161,194,0.6); }
 
-        /* HERO */
+        /* ── THE BIG BOOK NOW BUTTON ── */
+        .btn-book-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #f8b7d1, #f06aad);
+          color: #fff;
+          padding: 0.75rem 2.2rem;
+          border-radius: 999px;
+          font-size: 0.95rem;
+          font-weight: 700;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: all 0.25s;
+          box-shadow: 0 6px 22px rgba(240,106,173,0.4);
+          border: none;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .btn-book-pill:hover {
+          background: linear-gradient(135deg, #f49cc0, #e0559e);
+          transform: scale(1.06);
+          box-shadow: 0 10px 30px rgba(240,106,173,0.58);
+          color: #fff;
+        }
+
+        /* ── HERO ── */
         .hero {
-          min-height: 90vh;
+          min-height: 88vh;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -121,7 +152,7 @@ export default function Home() {
           content: '';
           position: absolute;
           inset: 0;
-          background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(248,183,209,0.3) 0%, transparent 70%);
+          background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(248,183,209,0.28) 0%, transparent 70%);
           pointer-events: none;
         }
         .hero-content { position: relative; z-index: 1; max-width: 700px; }
@@ -131,7 +162,7 @@ export default function Home() {
           color: var(--pink-deep);
           padding: 0.4rem 1.2rem;
           border-radius: 50px;
-          font-size: 0.8rem;
+          font-size: 0.78rem;
           letter-spacing: 2px;
           font-weight: 500;
           text-transform: uppercase;
@@ -149,27 +180,41 @@ export default function Home() {
         }
         .hero h1 em { color: var(--pink-deep); font-style: italic; }
         .hero p {
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           color: var(--text-light);
-          max-width: 450px;
+          max-width: 440px;
           margin: 0 auto 2.5rem;
           font-weight: 300;
+          line-height: 1.7;
         }
+        /* Hero CTA — big pink pill button */
         .hero-cta {
-          display: inline-block;
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #f8b7d1, #f06aad);
           color: #fff;
-          padding: 1rem 2.5rem;
-          border-radius: 50px;
-          font-size: 1rem;
-          font-weight: 600;
-          letter-spacing: 0.5px;
-          transition: all 0.3s;
-          box-shadow: 0 8px 30px rgba(255,110,196,0.35);
+          padding: 1.25rem 4.5rem;
+          border-radius: 999px;
+          font-size: 1.2rem;
+          font-weight: 700;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          box-shadow: 0 12px 40px rgba(240,106,173,0.4);
+          border: none;
+          cursor: pointer;
+          font-family: 'DM Sans', sans-serif;
         }
-        .hero-cta:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(255,110,196,0.5); }
+        .hero-cta:hover {
+          background: linear-gradient(135deg, #f49cc0, #e0559e);
+          transform: translateY(-4px) scale(1.05);
+          box-shadow: 0 18px 50px rgba(240,106,173,0.58);
+          color: #fff;
+        }
 
-        /* SECTIONS */
+        /* ── SECTIONS ── */
         section { padding: 5rem 2rem; max-width: 1000px; margin: 0 auto; }
         section h2 {
           font-family: 'Cormorant Garamond', serif;
@@ -179,8 +224,7 @@ export default function Home() {
           color: var(--text-dark);
         }
         .section-divider {
-          width: 60px;
-          height: 2px;
+          width: 60px; height: 2px;
           background: linear-gradient(90deg, var(--pink-soft), var(--pink-deep));
           margin: 0 auto 2rem;
           border-radius: 2px;
@@ -248,6 +292,15 @@ export default function Home() {
           cursor: pointer;
         }
         .gallery-img:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(249,161,194,0.4); }
+        .gallery-3d-wrap {
+          height: 480px;
+          position: relative;
+          margin-bottom: 2rem;
+          border-radius: 20px;
+          overflow: hidden;
+        }
+        @media (max-width: 768px) { .gallery-3d-wrap { height: 320px; } }
+        .see-more-wrap { text-align: center; }
         .see-more {
           display: inline-block;
           border: 2px solid var(--pink-mid);
@@ -260,7 +313,6 @@ export default function Home() {
           letter-spacing: 0.5px;
         }
         .see-more:hover { background: var(--pink-mid); color: #fff; }
-        .see-more-wrap { text-align: center; }
 
         /* REVIEWS */
         .reviews-grid { display: grid; gap: 1.5rem; }
@@ -323,34 +375,48 @@ export default function Home() {
           font-weight: 600;
           transition: all 0.3s;
           box-shadow: 0 6px 20px rgba(249,161,194,0.4);
+          cursor: pointer;
+          font-family: 'DM Sans', sans-serif;
         }
         .contact-form button:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(249,161,194,0.6); }
 
-        /* FLOATING BUTTON */
+        /* ── FLOATING BOOK NOW ── */
         .floating-book {
           position: fixed;
           bottom: 28px;
           left: 50%;
-          transform: translateX(-50%) translateY(30px);
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          transform: translateX(-50%) translateY(80px);
+          background: linear-gradient(135deg, #f8b7d1, #f06aad);
           color: #fff;
-          padding: 1rem 2.5rem;
-          border-radius: 50px;
-          font-weight: 600;
-          font-size: 1rem;
-          letter-spacing: 0.5px;
-          box-shadow: 0 10px 35px rgba(255,110,196,0.45);
-          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          padding: 1.1rem 3rem;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 1.05rem;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          text-decoration: none;
+          box-shadow: 0 10px 35px rgba(240,106,173,0.5);
+          transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
           z-index: 999;
           opacity: 0;
           pointer-events: none;
+          white-space: nowrap;
+          border: none;
+          outline: none;
+          -webkit-appearance: none;
+          appearance: none;
         }
         .floating-book.show {
           opacity: 1;
           pointer-events: auto;
           transform: translateX(-50%) translateY(0);
         }
-        .floating-book:hover { transform: translateX(-50%) scale(1.07); box-shadow: 0 14px 40px rgba(255,110,196,0.6); }
+        .floating-book:hover {
+          background: linear-gradient(135deg, #f49cc0, #e0559e);
+          transform: translateX(-50%) scale(1.07);
+          box-shadow: 0 14px 40px rgba(240,106,173,0.65);
+          color: #fff;
+        }
 
         /* FOOTER */
         footer {
@@ -366,10 +432,13 @@ export default function Home() {
           header { padding: 1rem 1.5rem; }
           nav { display: none; }
           .about-box, .policy-box { padding: 2rem 1.5rem; }
+          .btn-book-pill { padding: 0.65rem 1.5rem; font-size: 0.88rem; }
+          .floating-book { font-size: 0.95rem; padding: 1rem 2.2rem; }
         }
       `}</style>
 
       <div className="page">
+        {/* ── HEADER ── */}
         <header>
           <div className="logo">PavNailedIt</div>
           <nav>
@@ -378,12 +447,12 @@ export default function Home() {
             <a href="#reviews">Reviews</a>
             <a href="#contact">Contact</a>
           </nav>
-          <Link href="/book" className="btn-book" onClick={handleBookClick}>
+          <button className="btn-book-pill" onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}>
             BOOK NOW
-          </Link>
+          </button>
         </header>
 
-        {/* HERO */}
+        {/* ── HERO ── */}
         <div className="hero">
           <div className="hero-content">
             <span className="hero-eyebrow">✨ Plovdiv, Bulgaria</span>
@@ -391,13 +460,13 @@ export default function Home() {
               Book your<br /><em>appointment</em> 💅🏻
             </h1>
             <p>Unique, modern nail art designed just for you. Check availability and book your slot.</p>
-            <Link href="/book" className="hero-cta" onClick={handleBookClick}>
-              Reserve Your Spot
-            </Link>
+            <button className="hero-cta" onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}>
+              BOOK NOW
+            </button>
           </div>
         </div>
 
-        {/* ABOUT */}
+        {/* ── ABOUT ── */}
         <section id="about">
           <div className="section-title-wrap">
             <h2>About</h2>
@@ -412,7 +481,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* LATE POLICY */}
+        {/* ── LATE POLICY ── */}
         <section id="policy">
           <div className="section-title-wrap">
             <h2>⏰ Late Policy</h2>
@@ -421,7 +490,7 @@ export default function Home() {
           <div className="policy-box">
             <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
             <ul>
-              <li><strong>15 минути закъснение</strong> → доплащане 10лв</li>
+              <li><strong>15 минути закъснение</strong> → доплащане 5€</li>
               <li><strong>20 минути+</strong> → часът се <u>отменя</u> без възстановяване</li>
               <li><strong>3 пъти закъснение</strong> → клиентът <u>повече не се записва</u></li>
             </ul>
@@ -429,23 +498,28 @@ export default function Home() {
           </div>
         </section>
 
-        {/* GALLERY */}
+        {/* ── GALLERY ── */}
         <section id="gallery">
           <div className="section-title-wrap">
             <h2>Gallery</h2>
             <div className="section-divider" />
           </div>
-          <div className="gallery-grid">
-            {[1,2,3,4].map(i => (
-              <img key={i} src={`/nails/${i}/nail1.jpg`} alt={`Nail design ${i}`} className="gallery-img" />
-            ))}
+          <div className="gallery-3d-wrap">
+            <CircularGallery
+              items={GALLERY_PREVIEW}
+              bend={1}
+              textColor="#ffffff"
+              borderRadius={0.05}
+              scrollSpeed={1.6}
+              scrollEase={0.05}
+            />
           </div>
           <div className="see-more-wrap">
             <Link href="/pics" className="see-more">SEE MORE &gt;</Link>
           </div>
         </section>
 
-        {/* REVIEWS */}
+        {/* ── REVIEWS ── */}
         <section id="reviews">
           <div className="section-title-wrap">
             <h2>Reviews</h2>
@@ -464,7 +538,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* TIPS */}
+        {/* ── TIPS ── */}
         <section id="tips">
           <div className="section-title-wrap">
             <h2>🌸 Self-Care Tips</h2>
@@ -477,14 +551,14 @@ export default function Home() {
           </ul>
         </section>
 
-        {/* CONTACT */}
+        {/* ── CONTACT ── */}
         <section id="contact">
           <div className="section-title-wrap">
             <h2>Contact</h2>
             <div className="section-divider" />
           </div>
           <p style={{textAlign:'center', color:'var(--text-light)', marginBottom:'2rem'}}>
-            Ако имаш въпроси позвъни на <strong>+359 88 123 4567</strong> или се свържи с мен в Instagram <strong>@pavnailedit</strong> 💌
+            Ако имаш въпроси позвъни на <strong>+359 87 693 0230</strong> или се свържи с мен в Instagram <strong>@pav.nailed.it</strong> 💌
           </p>
           <form className="contact-form" onSubmit={e => e.preventDefault()}>
             <input type="text" placeholder="Your Name" required />
@@ -499,10 +573,13 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* FLOATING BOOK BUTTON */}
-      <Link href="/book" className={`floating-book ${scrolled ? 'show' : ''}`} onClick={handleBookClick}>
+      {/* ── FLOATING BOOK NOW (appears on scroll) ── */}
+      <button
+        className={`floating-book ${scrolled ? "show" : ""}`}
+        onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}
+      >
         BOOK NOW 💅
-      </Link>
+      </button>
     </>
   );
 }
