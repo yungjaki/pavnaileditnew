@@ -54,6 +54,7 @@ export default function Book() {
   const [loading, setLoading] = useState(false);
   const [nailLength, setNailLength] = useState(null);
   const [error, setError] = useState("");
+  const [breaks, setBreaks] = useState([]);
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
 
@@ -84,15 +85,26 @@ export default function Book() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/admin/breaks")
+      .then(r => r.json())
+      .then(data => setBreaks(data.breaks || []))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     import("flatpickr").then(({ default: flatpickr }) => {
       import("flatpickr/dist/l10n/bg.js").then(({ Bulgarian }) => {
+        fpInstance.current?.destroy();
         fpInstance.current = flatpickr(flatpickrRef.current, {
           locale: Bulgarian,
           minDate: "today",
           dateFormat: "d.m.Y",
           disableMobile: true,
-          disable: [(d) => d.getDay() === 2],
+          disable: [
+            (d) => d.getDay() === 2, // Tuesday
+            ...breaks.map(b => ({ from: b.start, to: b.end })),
+          ],
           onChange: ([date]) => {
             if (!date) return;
             const d = date.getDate().toString().padStart(2, "0");
@@ -105,7 +117,7 @@ export default function Book() {
       });
     });
     return () => fpInstance.current?.destroy();
-  }, []);
+  }, [breaks]);
 
   const getBookedTimes = (date) => bookings.filter(b => b.date === date).map(b => b.time);
 

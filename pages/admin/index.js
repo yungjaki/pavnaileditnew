@@ -133,7 +133,7 @@ function LoginScreen({ onLogin }) {
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState("appointments"); // appointments | calendar | giftcards
+  const [tab, setTab] = useState("appointments"); // appointments | calendar | giftcards | breaks
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filterDate, setFilterDate] = useState("");
@@ -141,6 +141,11 @@ export default function AdminPage() {
   const [giftCode, setGiftCode] = useState("");
   const [giftAmount, setGiftAmount] = useState("");
   const [giftMsg, setGiftMsg] = useState("");
+  const [breaks, setBreaks] = useState([]);
+  const [breakStart, setBreakStart] = useState("");
+  const [breakEnd, setBreakEnd] = useState("");
+  const [breakLabel, setBreakLabel] = useState("");
+  const [breakMsg, setBreakMsg] = useState("");
   const calendarRef = useRef(null);
   const fpCalRef = useRef(null);
 
@@ -166,6 +171,18 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (authed) fetchBookings();
+  }, [authed]);
+
+  const fetchBreaks = async () => {
+    const res = await fetch("/api/admin/breaks");
+    if (res.ok) {
+      const data = await res.json();
+      setBreaks(data.breaks || []);
+    }
+  };
+
+  useEffect(() => {
+    if (authed) fetchBreaks();
   }, [authed]);
 
   // Init FullCalendar when tab switches to calendar
@@ -194,7 +211,7 @@ export default function AdminPage() {
               },
             })),
             eventDidMount(info) {
-              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} €`;
+              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
             },
           });
           calendar.render();
@@ -253,7 +270,7 @@ export default function AdminPage() {
       body: JSON.stringify({ code: giftCode.toUpperCase(), amount: parseFloat(giftAmount) }),
     });
     if (res.ok) {
-      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}€) е създадена!`);
+      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}лв) е създадена!`);
       setGiftCode("");
       setGiftAmount("");
     } else {
@@ -574,6 +591,7 @@ export default function AdminPage() {
             { id: "appointments", label: "📋 Резервации" },
             { id: "calendar", label: "📅 Календар" },
             { id: "giftcards", label: "🎁 Подаръчни карти" },
+            { id: "breaks", label: "🌴 Почивки" },
           ].map((t) => (
             <button
               key={t.id}
@@ -610,7 +628,7 @@ export default function AdminPage() {
                     {bookings
                       .reduce((s, b) => s + (parseFloat(b.totalPrice) || 0), 0)
                       .toFixed(0)}
-                    €
+                    лв
                   </div>
                   <div className="stat-label">ОБЩ ПРИХОД</div>
                 </div>
@@ -663,7 +681,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div className="card-price">
-                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} €
+                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} лв
                         </div>
                         {b.designUrl && (
                           <div className="card-design">
@@ -716,7 +734,7 @@ export default function AdminPage() {
               <div className="gift-row">
                 <input
                   type="number"
-                  placeholder="Сума в € (напр. 50)"
+                  placeholder="Сума в лв (напр. 50)"
                   value={giftAmount}
                   onChange={(e) => setGiftAmount(e.target.value)}
                 />
@@ -725,6 +743,103 @@ export default function AdminPage() {
                 Създай карта ✨
               </button>
               {giftMsg && <div className="gift-msg">{giftMsg}</div>}
+            </div>
+          )}
+
+          {tab === "breaks" && (
+            <div className="gift-box">
+              <h2>🌴 Управление на почивки</h2>
+              <p style={{color:"#999",fontSize:"0.9rem",marginBottom:"1.5rem"}}>
+                Добави периоди когато не работиш — тези дати ще бъдат блокирани в календара за записване.
+              </p>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem",marginBottom:"0.75rem"}}>
+                <div>
+                  <label style={{fontSize:"0.75rem",fontWeight:700,color:"#aaa",letterSpacing:"1px",textTransform:"uppercase",display:"block",marginBottom:"4px"}}>От дата</label>
+                  <input
+                    type="date"
+                    value={breakStart}
+                    onChange={e => setBreakStart(e.target.value)}
+                    style={{width:"100%",padding:"0.7rem 1rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.3)",background:"#fdf8fa",fontSize:"0.9rem",fontFamily:"inherit",outline:"none"}}
+                  />
+                </div>
+                <div>
+                  <label style={{fontSize:"0.75rem",fontWeight:700,color:"#aaa",letterSpacing:"1px",textTransform:"uppercase",display:"block",marginBottom:"4px"}}>До дата</label>
+                  <input
+                    type="date"
+                    value={breakEnd}
+                    onChange={e => setBreakEnd(e.target.value)}
+                    style={{width:"100%",padding:"0.7rem 1rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.3)",background:"#fdf8fa",fontSize:"0.9rem",fontFamily:"inherit",outline:"none"}}
+                  />
+                </div>
+              </div>
+
+              <div style={{marginBottom:"0.75rem"}}>
+                <label style={{fontSize:"0.75rem",fontWeight:700,color:"#aaa",letterSpacing:"1px",textTransform:"uppercase",display:"block",marginBottom:"4px"}}>Описание (по желание)</label>
+                <input
+                  type="text"
+                  placeholder="напр. Отпуск, Коледни празници..."
+                  value={breakLabel}
+                  onChange={e => setBreakLabel(e.target.value)}
+                  style={{width:"100%",padding:"0.7rem 1rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.3)",background:"#fdf8fa",fontSize:"0.9rem",fontFamily:"inherit",outline:"none"}}
+                />
+              </div>
+
+              <button
+                className="gift-create-btn"
+                onClick={async () => {
+                  if (!breakStart || !breakEnd) { setBreakMsg("❌ Избери начална и крайна дата"); return; }
+                  if (breakStart > breakEnd) { setBreakMsg("❌ Началната дата трябва да е преди крайната"); return; }
+                  const res = await fetch("/api/admin/breaks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ start: breakStart, end: breakEnd, label: breakLabel }),
+                  });
+                  if (res.ok) {
+                    setBreakMsg("✅ Почивката е добавена!");
+                    setBreakStart(""); setBreakEnd(""); setBreakLabel("");
+                    fetchBreaks();
+                  } else {
+                    setBreakMsg("❌ Грешка при запазването");
+                  }
+                  setTimeout(() => setBreakMsg(""), 3000);
+                }}
+              >
+                Добави почивка 🌴
+              </button>
+              {breakMsg && <div className="gift-msg">{breakMsg}</div>}
+
+              {/* Existing breaks list */}
+              {breaks.length > 0 && (
+                <div style={{marginTop:"2rem"}}>
+                  <h3 style={{fontSize:"0.85rem",fontWeight:700,color:"#aaa",letterSpacing:"1px",textTransform:"uppercase",marginBottom:"1rem"}}>Добавени почивки</h3>
+                  <div style={{display:"flex",flexDirection:"column",gap:"0.6rem"}}>
+                    {breaks.map(b => (
+                      <div key={b.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,#fff0f6,#fde8f0)",borderRadius:"14px",padding:"0.9rem 1.2rem",border:"1px solid rgba(249,161,194,0.25)"}}>
+                        <div>
+                          <div style={{fontWeight:700,color:"#c94090",fontSize:"0.95rem"}}>
+                            {b.start.split("-").reverse().join(".")} — {b.end.split("-").reverse().join(".")}
+                          </div>
+                          {b.label && <div style={{fontSize:"0.8rem",color:"#aaa",marginTop:"2px"}}>{b.label}</div>}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            await fetch(`/api/admin/breaks?id=${b.id}`, { method: "DELETE" });
+                            fetchBreaks();
+                          }}
+                          style={{background:"none",border:"none",cursor:"pointer",color:"#e53e3e",fontSize:"1.1rem",padding:"4px 8px",borderRadius:"8px",transition:"background 0.2s"}}
+                          title="Изтрий"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {breaks.length === 0 && (
+                <p style={{textAlign:"center",color:"#ccc",marginTop:"2rem",fontSize:"0.9rem"}}>Няма добавени почивки</p>
+              )}
             </div>
           )}
         </div>
