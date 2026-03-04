@@ -92,7 +92,7 @@ export default function Book() {
           minDate: "today",
           dateFormat: "d.m.Y",
           disableMobile: true,
-          disable: [(d) => d.getDay() === 1],
+          disable: [(d) => d.getDay() === 2],
           onChange: ([date]) => {
             if (!date) return;
             const d = date.getDate().toString().padStart(2, "0");
