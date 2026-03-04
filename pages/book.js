@@ -93,9 +93,17 @@ export default function Book() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!flatpickrRef.current) return;
     import("flatpickr").then(({ default: flatpickr }) => {
       import("flatpickr/dist/l10n/bg.js").then(({ Bulgarian }) => {
         fpInstance.current?.destroy();
+
+        // Convert break date strings to Date objects for flatpickr
+        const disabledRanges = breaks.map(b => ({
+          from: new Date(b.start + "T00:00:00"),
+          to:   new Date(b.end   + "T00:00:00"),
+        }));
+
         fpInstance.current = flatpickr(flatpickrRef.current, {
           locale: Bulgarian,
           minDate: "today",
@@ -103,7 +111,7 @@ export default function Book() {
           disableMobile: true,
           disable: [
             (d) => d.getDay() === 2, // Tuesday
-            ...breaks.map(b => ({ from: b.start, to: b.end })),
+            ...disabledRanges,
           ],
           onChange: ([date]) => {
             if (!date) return;
