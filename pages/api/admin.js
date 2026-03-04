@@ -1,6 +1,6 @@
 import { bookingsCollection, giftcardsCollection } from "../../lib/firebase";
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "pavnailed-admin-2025";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "Pp240408";
 
 function isAuthorized(req) {
   const token = req.headers["x-admin-token"] || req.query.token;

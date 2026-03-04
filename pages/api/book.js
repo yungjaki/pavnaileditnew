@@ -44,6 +44,7 @@ export default async function handler(req, res) {
         const time         = fields.time?.[0];
         const totalPrice   = fields.totalPrice?.[0];
         const services     = JSON.parse(fields.services?.[0] || "[]");
+        const nailLength   = fields.nailLength?.[0] || null;
 
         if (!name || !phone || !clientEmail || !date || !time) {
           return res.status(400).json({ error: "Missing required fields" });
@@ -71,12 +72,12 @@ export default async function handler(req, res) {
         // Save to Firestore
         const docRef = await bookingsCol().add({
           name, phone, clientEmail, services,
-          date, time, designUrl, totalPrice,
+          date, time, designUrl, totalPrice, nailLength,
           createdAt: new Date().toISOString(),
         });
 
         // Send emails (awaited so they complete before function exits)
-        const emailData = { name, email: clientEmail, phone, date, time, services, totalPrice, designUrl };
+        const emailData = { name, email: clientEmail, phone, date, time, services, totalPrice, designUrl, nailLength };
         await Promise.all([
           sendClientConfirmation(emailData).catch(e => console.error("Client email failed:", e.message)),
           sendOwnerNotification(emailData).catch(e => console.error("Owner email failed:", e.message)),

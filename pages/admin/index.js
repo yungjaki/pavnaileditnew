@@ -645,6 +645,11 @@ export default function AdminPage() {
                           {b.phone && <span className="badge">📞 {b.phone}</span>}
                           {b.clientEmail && <span className="badge">✉️ {b.clientEmail}</span>}
                         </div>
+                        {b.nailLength && (
+                          <div style={{fontSize:'0.82rem',color:'#888',marginTop:'4px'}}>
+                            💅 Дължина: <strong>{NAIL_LENGTH_LABELS[b.nailLength] || b.nailLength}</strong>
+                          </div>
+                        )}
                         {b.services?.length > 0 && (
                           <div className="card-services">
                             💅 {(Array.isArray(b.services) ? b.services : [b.services]).join(", ")}

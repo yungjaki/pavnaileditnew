@@ -178,6 +178,7 @@ export default function Book() {
     formData.append("date", selectedDate);
     formData.append("time", selectedTime);
     formData.append("totalPrice", totalPrice.toFixed(2));
+    if (nailLength) formData.append("nailLength", nailLength);
     if (designFile) formData.append("design", designFile);
     const res = await fetch("/api/book", { method: "POST", body: formData });
     const data = await res.json();
@@ -435,15 +436,25 @@ export default function Book() {
   const ServiceChip = ({ svc }) => {
     const count = selected[svc.name] || 0;
     const active = count > 0;
+    const isDisabled =
+      (svc.name === "Гел - къси нокти"  && (nailLength === "long"  || nailLength === "xlong")) ||
+      (svc.name === "Гел - дълги нокти" && (nailLength === "short" || nailLength === "medium"));
     return (
-      <button className={`chip ${active ? "chip-active" : ""}`} onClick={() => toggleService(svc)} type="button">
+      <button
+        className={`chip ${active ? "chip-active" : ""} ${isDisabled ? "chip-disabled" : ""}`}
+        onClick={() => !isDisabled && toggleService(svc)}
+        type="button"
+        title={isDisabled ? "Не е съвместимо с избраната дължина" : ""}
+        disabled={isDisabled}
+      >
         {svc.name}
         {active && svc.countable && <span className="chip-count">{count}</span>}
         {active && <span className="chip-price">{svc.price}€</span>}
         <style jsx>{`
           .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 1rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
-          .chip:hover { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
+          .chip:hover:not(:disabled) { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
           .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
+          .chip-disabled { opacity: 0.35; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
           .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
           .chip-price { font-size: 0.8rem; opacity: 0.9; }
         `}</style>
