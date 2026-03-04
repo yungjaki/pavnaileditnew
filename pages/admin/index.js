@@ -211,7 +211,7 @@ export default function AdminPage() {
               },
             })),
             eventDidMount(info) {
-              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
+              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} €`;
             },
           });
           calendar.render();
@@ -270,7 +270,7 @@ export default function AdminPage() {
       body: JSON.stringify({ code: giftCode.toUpperCase(), amount: parseFloat(giftAmount) }),
     });
     if (res.ok) {
-      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}лв) е създадена!`);
+      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}€) е създадена!`);
       setGiftCode("");
       setGiftAmount("");
     } else {
@@ -628,7 +628,7 @@ export default function AdminPage() {
                     {bookings
                       .reduce((s, b) => s + (parseFloat(b.totalPrice) || 0), 0)
                       .toFixed(0)}
-                    лв
+                    €
                   </div>
                   <div className="stat-label">ОБЩ ПРИХОД</div>
                 </div>
@@ -681,7 +681,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div className="card-price">
-                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} лв
+                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} €
                         </div>
                         {b.designUrl && (
                           <div className="card-design">
@@ -734,7 +734,7 @@ export default function AdminPage() {
               <div className="gift-row">
                 <input
                   type="number"
-                  placeholder="Сума в лв (напр. 50)"
+                  placeholder="Сума в € (напр. 50)"
                   value={giftAmount}
                   onChange={(e) => setGiftAmount(e.target.value)}
                 />
