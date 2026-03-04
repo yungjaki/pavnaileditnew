@@ -1,6 +1,13 @@
 import Head from "next/head";
 import { useState, useEffect, useRef } from "react";
 
+const NAIL_LENGTH_LABELS = {
+  short:  "Къси (0–2mm)",
+  medium: "Средни (3–4mm)",
+  long:   "Дълги (5–7mm)",
+  xlong:  "X-Дълги (8–10mm)",
+};
+
 // ─── helpers ──────────────────────────────────────────────
 function toDateObj(dateStr, timeStr = "00:00") {
   const [d, m, y] = (dateStr || "").split(".");
