@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import NailLengthPicker from "../components/NailLengthPicker";
 
 const SERVICES = [
   { name: "Гел - къси нокти", price: 18 },
@@ -41,7 +42,7 @@ export default function Book() {
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [selected, setSelected] = useState({});  // { serviceName: count }
+  const [selected, setSelected] = useState({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -51,12 +52,11 @@ export default function Book() {
   const [giftValid, setGiftValid] = useState(false);
   const [designFile, setDesignFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [nailLength, setNailLength] = useState(null); // short | medium | long | xlong
+  const [nailLength, setNailLength] = useState(null);
   const [error, setError] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
 
-  // Check if already booked
   useEffect(() => {
     const id = localStorage.getItem("pavBooking");
     const date = localStorage.getItem("pavBookingDate");
@@ -76,7 +76,6 @@ export default function Book() {
     }
   }, []);
 
-  // Load bookings
   useEffect(() => {
     fetch("/api/book")
       .then(r => r.json())
@@ -84,7 +83,6 @@ export default function Book() {
       .catch(console.error);
   }, []);
 
-  // Init flatpickr
   useEffect(() => {
     if (typeof window === "undefined") return;
     import("flatpickr").then(({ default: flatpickr }) => {
@@ -94,9 +92,7 @@ export default function Book() {
           minDate: "today",
           dateFormat: "d.m.Y",
           disableMobile: true,
-          disable: [
-            (d) => d.getDay() === 1, // Monday
-          ],
+          disable: [(d) => d.getDay() === 1],
           onChange: ([date]) => {
             if (!date) return;
             const d = date.getDate().toString().padStart(2, "0");
@@ -150,10 +146,7 @@ export default function Book() {
     if (!giftCode) return;
     const res = await fetch(`/api/giftcard?code=${giftCode}`);
     const data = await res.json();
-    if (!res.ok || !data.cards?.length) {
-      setGiftFeedback("❌ Невалиден код");
-      return;
-    }
+    if (!res.ok || !data.cards?.length) { setGiftFeedback("❌ Невалиден код"); return; }
     const card = data.cards.find(c => c.code === giftCode.toUpperCase());
     if (!card) { setGiftFeedback("❌ Невалиден код"); return; }
     if (card.used) { setGiftFeedback("❌ Тази карта вече е използвана"); return; }
@@ -169,10 +162,7 @@ export default function Book() {
       setError("❌ Моля, попълнете всички задължителни полета.");
       return;
     }
-
     setLoading(true);
-
-    // Mark gift card as used
     if (giftValid && giftCode) {
       await fetch("/api/giftcard", {
         method: "PUT",
@@ -180,7 +170,6 @@ export default function Book() {
         body: JSON.stringify({ code: giftCode }),
       });
     }
-
     const formData = new FormData();
     formData.append("name", name);
     formData.append("phone", phone);
@@ -190,11 +179,9 @@ export default function Book() {
     formData.append("time", selectedTime);
     formData.append("totalPrice", totalPrice.toFixed(2));
     if (designFile) formData.append("design", designFile);
-
     const res = await fetch("/api/book", { method: "POST", body: formData });
     const data = await res.json();
     setLoading(false);
-
     if (res.ok) {
       localStorage.setItem("pavBooking", data.id);
       localStorage.setItem("pavBookingDate", selectedDate);
@@ -207,43 +194,257 @@ export default function Book() {
     }
   };
 
+  const NAIL_LENGTHS = [
+    { key: "short",  label: "Къси",    range: "0–2",  magnets: 2,  nailH: 18, price: "Базова",  extra: 0   },
+    { key: "medium", label: "Средни",  range: "3–4",  magnets: 4,  nailH: 30, price: "+2.5€",   extra: 2.5 },
+    { key: "long",   label: "Дълги",   range: "5–7",  magnets: 6,  nailH: 44, price: "+5€",     extra: 5   },
+    { key: "xlong",  label: "X-Дълги", range: "8–10", magnets: 9,  nailH: 60, price: "+7.5€",   extra: 7.5 },
+  ];
+
+  const NailLengthPicker = ({ value, onChange }) => {
+    const [hovered, setHovered] = useState(null);
+    const active = hovered || value;
+    const activeData = NAIL_LENGTHS.find(n => n.key === active);
+
+    return (
+      <>
+        <style>{`
+          .nlp-wrap { margin-bottom: 1rem; }
+          .nlp-scene {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 32px;
+            background: linear-gradient(160deg, #fff5fa, #fce8f3);
+            border-radius: 20px;
+            padding: 20px 16px 0;
+            margin-bottom: 14px;
+            border: 1.5px solid rgba(249,161,194,0.25);
+            min-height: 160px;
+            position: relative;
+            overflow: hidden;
+          }
+          .nlp-scene::before {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 40px;
+            background: linear-gradient(180deg, transparent, rgba(249,161,194,0.08));
+          }
+          /* FINGER */
+          .nlp-finger-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+          }
+          .nlp-nail {
+            width: 44px;
+            border-radius: 50% 50% 8px 8px;
+            background: linear-gradient(160deg, #ffd6ec, #f06aad);
+            box-shadow: inset -3px -3px 6px rgba(0,0,0,0.08), 0 2px 8px rgba(240,106,173,0.3);
+            transition: height 0.5s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative;
+            z-index: 2;
+          }
+          .nlp-nail::after {
+            content: '';
+            position: absolute;
+            top: 5px; left: 6px;
+            width: 12px; height: 6px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            transform: rotate(-20deg);
+          }
+          .nlp-finger-body {
+            width: 48px;
+            height: 90px;
+            background: linear-gradient(180deg, #fde8d8, #f5cdb0);
+            border-radius: 0 0 24px 24px;
+            box-shadow: inset -4px 0 8px rgba(0,0,0,0.06), 2px 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+            z-index: 1;
+          }
+          .nlp-finger-body::before {
+            content: '';
+            position: absolute;
+            top: 8px; left: 8px;
+            width: 6px; height: 30px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+          }
+          /* MAGNETS */
+          .nlp-magnets {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 3px;
+            padding-bottom: 8px;
+          }
+          .nlp-magnet {
+            width: 36px;
+            height: 14px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #d0d0d0, #a8a8a8);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            animation: magnetDrop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+          }
+          @keyframes magnetDrop {
+            from { opacity: 0; transform: translateY(-10px) scale(0.8); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          /* INFO PANEL */
+          .nlp-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding-bottom: 16px;
+            min-width: 100px;
+          }
+          .nlp-info-range {
+            font-size: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            color: var(--pink-deep);
+            line-height: 1;
+            transition: all 0.3s;
+          }
+          .nlp-info-mm {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+          }
+          .nlp-info-label {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+          }
+          .nlp-info-price {
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+          .nlp-info-magnets {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 2px;
+          }
+          /* BUTTONS */
+          .nlp-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+          }
+          .nlp-btn {
+            padding: 0.6rem 0.4rem;
+            border-radius: 14px;
+            border: 2px solid rgba(249,161,194,0.3);
+            background: #fdf8fa;
+            cursor: pointer;
+            transition: all 0.22s;
+            font-family: 'DM Sans', sans-serif;
+            text-align: center;
+            outline: none;
+          }
+          .nlp-btn:hover { border-color: var(--pink-mid); background: #fff0f6; transform: translateY(-2px); }
+          .nlp-btn.selected {
+            border-color: #ff6ec4;
+            background: linear-gradient(135deg, #fff0f8, #ffe4f2);
+            box-shadow: 0 4px 14px rgba(255,110,196,0.25);
+            transform: translateY(-3px);
+          }
+          .nlp-btn-label { font-size: 0.78rem; font-weight: 700; color: var(--text-dark); display: block; }
+          .nlp-btn-range { font-size: 0.68rem; color: var(--text-light); display: block; margin: 1px 0; }
+          .nlp-btn-price { font-size: 0.7rem; font-weight: 600; color: var(--pink-deep); display: block; }
+          .nlp-btn.selected .nlp-btn-label { color: var(--pink-deep); }
+          .nlp-hint {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+          }
+        `}</style>
+
+        <div className="nlp-wrap">
+          {/* Visual scene */}
+          <div className="nlp-scene">
+            {/* Finger with animated nail */}
+            <div className="nlp-finger-wrap">
+              <div className="nlp-nail" style={{ height: activeData ? activeData.nailH : 18 }} />
+              <div className="nlp-finger-body" />
+            </div>
+
+            {/* Stacked magnets */}
+            <div className="nlp-magnets">
+              {Array.from({ length: activeData ? activeData.magnets : 2 }).map((_, i) => (
+                <div key={i} className="nlp-magnet" style={{ animationDelay: `${i * 0.06}s` }}>
+                  ▬▬
+                </div>
+              ))}
+            </div>
+
+            {/* Info */}
+            <div className="nlp-info">
+              <div className="nlp-info-mm">магнити / мм</div>
+              <div className="nlp-info-range">{activeData ? activeData.range : "0–2"}</div>
+              <div className="nlp-info-label">{activeData ? activeData.label : "Избери"}</div>
+              <div className="nlp-info-price">{activeData ? activeData.price : "—"}</div>
+              <div className="nlp-info-magnets">{activeData ? `${activeData.magnets} магнита` : ""}</div>
+            </div>
+          </div>
+
+          {/* Selector buttons */}
+          <div className="nlp-buttons">
+            {NAIL_LENGTHS.map(n => (
+              <button
+                key={n.key}
+                type="button"
+                className={`nlp-btn ${value === n.key ? "selected" : ""}`}
+                onClick={() => onChange(value === n.key ? null : n.key)}
+                onMouseEnter={() => setHovered(n.key)}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <span className="nlp-btn-label">{n.label}</span>
+                <span className="nlp-btn-range">{n.range}mm</span>
+                <span className="nlp-btn-price">{n.price}</span>
+              </button>
+            ))}
+          </div>
+          {!value && <p className="nlp-hint">✨ Избери дължина за да видиш цената</p>}
+        </div>
+      </>
+    );
+  };
+
   const ServiceChip = ({ svc }) => {
     const count = selected[svc.name] || 0;
     const active = count > 0;
     return (
-      <button
-        className={`chip ${active ? "chip-active" : ""}`}
-        onClick={() => toggleService(svc)}
-        type="button"
-      >
+      <button className={`chip ${active ? "chip-active" : ""}`} onClick={() => toggleService(svc)} type="button">
         {svc.name}
         {active && svc.countable && <span className="chip-count">{count}</span>}
         {active && <span className="chip-price">{svc.price}€</span>}
         <style jsx>{`
-          .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 0.5rem 1rem;
-            border-radius: 50px;
-            border: 1.5px solid rgba(249,161,194,0.4);
-            background: #fff;
-            color: var(--text-mid);
-            font-size: 0.88rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.25s;
-            font-family: 'DM Sans', sans-serif;
-          }
+          .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 1rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
           .chip:hover { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
           .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
-          .chip-count {
-            background: rgba(255,255,255,0.3);
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; font-weight: 700;
-          }
+          .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
           .chip-price { font-size: 0.8rem; opacity: 0.9; }
         `}</style>
       </button>
@@ -258,214 +459,34 @@ export default function Book() {
       </Head>
 
       <style jsx>{`
-        .page {
-          min-height: 100vh;
-          background: var(--bg);
-          padding: 2rem 1rem 4rem;
-        }
-        .back-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: var(--text-light);
-          font-size: 0.9rem;
-          margin-bottom: 1.5rem;
-          transition: color 0.2s;
-        }
+        .page { min-height: 100vh; background: var(--bg); padding: 2rem 1rem 4rem; }
+        .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.5rem; transition: color 0.2s; }
         .back-link:hover { color: var(--pink-deep); }
-        h1 {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(2.5rem, 6vw, 4rem);
-          font-weight: 300;
-          text-align: center;
-          color: var(--text-dark);
-          margin-bottom: 2.5rem;
-          letter-spacing: -0.5px;
-        }
+        h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 300; text-align: center; color: var(--text-dark); margin-bottom: 2.5rem; letter-spacing: -0.5px; }
         h1 em { color: var(--pink-deep); font-style: italic; }
-        .form-card {
-          max-width: 620px;
-          margin: 0 auto;
-          background: #fff;
-          border-radius: 28px;
-          padding: 2.5rem;
-          box-shadow: 0 20px 60px rgba(249,161,194,0.15);
-          border: 1px solid rgba(249,161,194,0.15);
-        }
+        .form-card { max-width: 620px; margin: 0 auto; background: #fff; border-radius: 28px; padding: 2.5rem; box-shadow: 0 20px 60px rgba(249,161,194,0.15); border: 1px solid rgba(249,161,194,0.15); }
         .field { margin-bottom: 1.5rem; }
-        label {
-          display: block;
-          font-size: 0.8rem;
-          font-weight: 600;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          color: var(--text-light);
-          margin-bottom: 0.5rem;
-        }
-        input[type=text], input[type=tel], input[type=email], input[type=file] {
-          width: 100%;
-          padding: 0.8rem 1.2rem;
-          border-radius: 14px;
-          border: 1.5px solid rgba(249,161,194,0.3);
-          background: #fdf8fa;
-          font-size: 0.95rem;
-          color: var(--text-dark);
-          outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          font-family: 'DM Sans', sans-serif;
-        }
-        input:focus {
-          border-color: var(--pink-mid);
-          box-shadow: 0 0 0 3px rgba(249,161,194,0.15);
-          background: #fff;
-        }
-        /* ── NAIL LENGTH SELECTOR ── */
-        .nail-length-wrap {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0.6rem;
-          margin-bottom: 1.25rem;
-        }
-        .nail-btn {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
-          padding-bottom: 0.75rem;
-          border-radius: 18px;
-          border: 2px solid rgba(249,161,194,0.3);
-          background: #fdf8fa;
-          cursor: pointer;
-          transition: all 0.25s;
-          overflow: hidden;
-          min-height: 100px;
-          gap: 0.3rem;
-          outline: none;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .nail-btn:hover { border-color: var(--pink-mid); background: #fff0f6; transform: translateY(-2px); }
-        .nail-btn.active {
-          border-color: #ff6ec4;
-          background: linear-gradient(160deg, #fff0f8, #ffe4f2);
-          box-shadow: 0 6px 20px rgba(255,110,196,0.25);
-          transform: translateY(-3px);
-        }
-        .nail-visual {
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          gap: 3px;
-          padding-top: 0.75rem;
-          flex: 1;
-        }
-        .nail-finger {
-          width: 18px;
-          border-radius: 40% 40% 10px 10px;
-          background: linear-gradient(180deg, #f8b7d1, #f06aad);
-          transition: height 0.3s cubic-bezier(0.34,1.56,0.64,1);
-          position: relative;
-        }
-        .nail-btn.active .nail-finger {
-          background: linear-gradient(180deg, #ff9ed6, #e0559e);
-        }
-        .nail-label {
-          font-size: 0.72rem;
-          font-weight: 700;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          color: var(--text-light);
-        }
-        .nail-btn.active .nail-label { color: var(--pink-deep); }
-        .nail-price-badge {
-          font-size: 0.7rem;
-          font-weight: 600;
-          color: var(--pink-deep);
-          background: rgba(255,110,196,0.12);
-          padding: 2px 8px;
-          border-radius: 20px;
-        }
-        .nail-btn.active .nail-price-badge {
-          background: rgba(255,110,196,0.25);
-        }
+        label { display: block; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-light); margin-bottom: 0.5rem; }
+        input[type=text], input[type=tel], input[type=email], input[type=file] { width: 100%; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid rgba(249,161,194,0.3); background: #fdf8fa; font-size: 0.95rem; color: var(--text-dark); outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: 'DM Sans', sans-serif; }
+        input:focus { border-color: var(--pink-mid); box-shadow: 0 0 0 3px rgba(249,161,194,0.15); background: #fff; }
+        /* nail length picker styles injected via component */
         .chips-wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .section-label {
-          font-size: 0.8rem;
-          font-weight: 600;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          color: var(--pink-deep);
-          margin-bottom: 0.75rem;
-          display: block;
-        }
-        .divider {
-          border: none;
-          border-top: 1px solid rgba(249,161,194,0.2);
-          margin: 1.5rem 0;
-        }
+        .section-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--pink-deep); margin-bottom: 0.75rem; display: block; }
+        .divider { border: none; border-top: 1px solid rgba(249,161,194,0.2); margin: 1.5rem 0; }
         .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
-        .time-btn {
-          padding: 0.8rem;
-          border-radius: 14px;
-          border: 1.5px solid rgba(249,161,194,0.3);
-          background: #fdf8fa;
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--text-mid);
-          cursor: pointer;
-          transition: all 0.25s;
-          font-family: 'DM Sans', sans-serif;
-        }
+        .time-btn { padding: 0.8rem; border-radius: 14px; border: 1.5px solid rgba(249,161,194,0.3); background: #fdf8fa; font-size: 0.95rem; font-weight: 600; color: var(--text-mid); cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
         .time-btn:hover:not(:disabled) { border-color: var(--pink-mid); background: #fff0f6; }
         .time-btn.active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(255,110,196,0.35); }
         .time-btn:disabled { opacity: 0.4; cursor: not-allowed; background: #f5e0e8; }
         .gift-row { display: flex; gap: 0.75rem; align-items: center; }
         .gift-row input { flex: 1; }
-        .gift-btn {
-          white-space: nowrap;
-          padding: 0.8rem 1.2rem;
-          border-radius: 14px;
-          border: 1.5px solid var(--pink-mid);
-          background: #fff;
-          color: var(--pink-deep);
-          font-size: 0.9rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.25s;
-          font-family: 'DM Sans', sans-serif;
-        }
+        .gift-btn { white-space: nowrap; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid var(--pink-mid); background: #fff; color: var(--pink-deep); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
         .gift-btn:hover { background: var(--pink-light); }
         .gift-feedback { font-size: 0.9rem; font-weight: 500; color: var(--pink-deep); margin-top: 0.5rem; }
-        .total {
-          background: linear-gradient(135deg, #fff0f6, #fde8f0);
-          border-radius: 16px;
-          padding: 1.2rem 1.5rem;
-          text-align: center;
-          margin: 1.5rem 0;
-          border: 1.5px solid rgba(249,161,194,0.3);
-        }
-        .total-amount {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 2rem;
-          font-weight: 600;
-          color: var(--pink-deep);
-        }
+        .total { background: linear-gradient(135deg, #fff0f6, #fde8f0); border-radius: 16px; padding: 1.2rem 1.5rem; text-align: center; margin: 1.5rem 0; border: 1.5px solid rgba(249,161,194,0.3); }
+        .total-amount { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; color: var(--pink-deep); }
         .total-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-light); margin-bottom: 0.25rem; }
-        .submit-btn {
-          width: 100%;
-          padding: 1.1rem;
-          border: none;
-          border-radius: 50px;
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
-          color: #fff;
-          font-size: 1.05rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.3s;
-          box-shadow: 0 8px 25px rgba(255,110,196,0.4);
-          font-family: 'DM Sans', sans-serif;
-          letter-spacing: 0.5px;
-        }
+        .submit-btn { width: 100%; padding: 1.1rem; border: none; border-radius: 50px; background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 25px rgba(255,110,196,0.4); font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px; }
         .submit-btn:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 12px 35px rgba(255,110,196,0.55); }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .error { color: #e53e3e; font-size: 0.9rem; background: #fff5f5; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 1rem; }
@@ -480,10 +501,9 @@ export default function Book() {
         <div className="form-card">
           {error && <div className="error">{error}</div>}
 
-          {/* Personal info */}
           <div className="field">
             <label>Пълно Име</label>
-            <input type="text" placeholder="Иванка Иванова" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="Павлина Иванова" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="field">
             <label>Телефон</label>
@@ -496,37 +516,11 @@ export default function Book() {
 
           <hr className="divider" />
 
-          {/* Nail Length */}
           <span className="section-label">Дължина на ноктите</span>
-          <div className="nail-length-wrap">
-            {[
-              { key: "short",  label: "Къси",    mm: "0–2",  height: 28, price: 0      },
-              { key: "medium", label: "Средни",  mm: "3–4",  height: 42, price: "+2.5€" },
-              { key: "long",   label: "Дълги",   mm: "5–7",  height: 58, price: "+5€"   },
-              { key: "xlong",  label: "X-Дълги", mm: "8–10", height: 74, price: "+7.5€" },
-            ].map(({ key, label, mm, height, price }) => (
-              <button
-                key={key}
-                type="button"
-                className={`nail-btn ${nailLength === key ? "active" : ""}`}
-                onClick={() => setNailLength(prev => prev === key ? null : key)}
-              >
-                <div className="nail-visual">
-                  <div className="nail-finger" style={{ height: height * 0.55 }} />
-                  <div className="nail-finger" style={{ height: height * 0.75 }} />
-                  <div className="nail-finger" style={{ height: height }} />
-                  <div className="nail-finger" style={{ height: height * 0.85 }} />
-                  <div className="nail-finger" style={{ height: height * 0.6 }} />
-                </div>
-                <span className="nail-label">{label}</span>
-                <span className="nail-price-badge">{price === 0 ? "Базова" : price}</span>
-              </button>
-            ))}
-          </div>
+          <NailLengthPicker value={nailLength} onChange={setNailLength} />
 
           <hr className="divider" />
 
-          {/* Services */}
           <span className="section-label">Основни услуги</span>
           <div className="chips-wrap">
             {SERVICES.map(svc => <ServiceChip key={svc.name} svc={svc} />)}
@@ -540,13 +534,11 @@ export default function Book() {
 
           <hr className="divider" />
 
-          {/* Date */}
           <div className="field">
             <label>Дата</label>
             <input type="text" ref={flatpickrRef} placeholder="Избери дата" readOnly />
           </div>
 
-          {/* Time */}
           {selectedDate && (
             <div className="field">
               <label>Час</label>
@@ -568,13 +560,11 @@ export default function Book() {
 
           <hr className="divider" />
 
-          {/* Design upload */}
           <div className="field">
             <label>Прикачи дизайн (по желание)</label>
             <input type="file" accept="image/*" onChange={e => setDesignFile(e.target.files[0])} />
           </div>
 
-          {/* Gift card */}
           <div className="field">
             <label>Подаръчна карта</label>
             <div className="gift-row">
@@ -592,7 +582,6 @@ export default function Book() {
             {giftFeedback && <p className="gift-feedback">{giftFeedback}</p>}
           </div>
 
-          {/* Total */}
           <div className="total">
             <div className="total-label">Общо</div>
             <div className="total-amount">{totalPrice.toFixed(2)} €</div>
