@@ -51,6 +51,7 @@ export default function Book() {
   const [giftValid, setGiftValid] = useState(false);
   const [designFile, setDesignFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [nailLength, setNailLength] = useState(null); // short | medium | long | xlong
   const [error, setError] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
@@ -125,10 +126,12 @@ export default function Book() {
     }));
   };
 
+  const NAIL_LENGTH_PRICES = { short: 0, medium: 2.5, long: 5, xlong: 7.5 };
+
   const totalRaw = Object.entries(selected).reduce((sum, [name, count]) => {
     const svc = [...SERVICES, ...ADDONS].find(s => s.name === name);
     return sum + (svc ? svc.price * count : 0);
-  }, 0);
+  }, 0) + (nailLength ? NAIL_LENGTH_PRICES[nailLength] : 0);
 
   const totalPrice = Math.max(0, totalRaw - giftDiscount);
 
@@ -316,6 +319,75 @@ export default function Book() {
           box-shadow: 0 0 0 3px rgba(249,161,194,0.15);
           background: #fff;
         }
+        /* ── NAIL LENGTH SELECTOR ── */
+        .nail-length-wrap {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.6rem;
+          margin-bottom: 1.25rem;
+        }
+        .nail-btn {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding-bottom: 0.75rem;
+          border-radius: 18px;
+          border: 2px solid rgba(249,161,194,0.3);
+          background: #fdf8fa;
+          cursor: pointer;
+          transition: all 0.25s;
+          overflow: hidden;
+          min-height: 100px;
+          gap: 0.3rem;
+          outline: none;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .nail-btn:hover { border-color: var(--pink-mid); background: #fff0f6; transform: translateY(-2px); }
+        .nail-btn.active {
+          border-color: #ff6ec4;
+          background: linear-gradient(160deg, #fff0f8, #ffe4f2);
+          box-shadow: 0 6px 20px rgba(255,110,196,0.25);
+          transform: translateY(-3px);
+        }
+        .nail-visual {
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 3px;
+          padding-top: 0.75rem;
+          flex: 1;
+        }
+        .nail-finger {
+          width: 18px;
+          border-radius: 40% 40% 10px 10px;
+          background: linear-gradient(180deg, #f8b7d1, #f06aad);
+          transition: height 0.3s cubic-bezier(0.34,1.56,0.64,1);
+          position: relative;
+        }
+        .nail-btn.active .nail-finger {
+          background: linear-gradient(180deg, #ff9ed6, #e0559e);
+        }
+        .nail-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          color: var(--text-light);
+        }
+        .nail-btn.active .nail-label { color: var(--pink-deep); }
+        .nail-price-badge {
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--pink-deep);
+          background: rgba(255,110,196,0.12);
+          padding: 2px 8px;
+          border-radius: 20px;
+        }
+        .nail-btn.active .nail-price-badge {
+          background: rgba(255,110,196,0.25);
+        }
         .chips-wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
         .section-label {
           font-size: 0.8rem;
@@ -411,7 +483,7 @@ export default function Book() {
           {/* Personal info */}
           <div className="field">
             <label>Пълно Име</label>
-            <input type="text" placeholder="Павлина Иванова" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="Иванка Иванова" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="field">
             <label>Телефон</label>
@@ -420,6 +492,36 @@ export default function Book() {
           <div className="field">
             <label>Имейл</label>
             <input type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+
+          <hr className="divider" />
+
+          {/* Nail Length */}
+          <span className="section-label">Дължина на ноктите</span>
+          <div className="nail-length-wrap">
+            {[
+              { key: "short",  label: "Къси",    mm: "0–2",  height: 28, price: 0      },
+              { key: "medium", label: "Средни",  mm: "3–4",  height: 42, price: "+2.5€" },
+              { key: "long",   label: "Дълги",   mm: "5–7",  height: 58, price: "+5€"   },
+              { key: "xlong",  label: "X-Дълги", mm: "8–10", height: 74, price: "+7.5€" },
+            ].map(({ key, label, mm, height, price }) => (
+              <button
+                key={key}
+                type="button"
+                className={`nail-btn ${nailLength === key ? "active" : ""}`}
+                onClick={() => setNailLength(prev => prev === key ? null : key)}
+              >
+                <div className="nail-visual">
+                  <div className="nail-finger" style={{ height: height * 0.55 }} />
+                  <div className="nail-finger" style={{ height: height * 0.75 }} />
+                  <div className="nail-finger" style={{ height: height }} />
+                  <div className="nail-finger" style={{ height: height * 0.85 }} />
+                  <div className="nail-finger" style={{ height: height * 0.6 }} />
+                </div>
+                <span className="nail-label">{label}</span>
+                <span className="nail-price-badge">{price === 0 ? "Базова" : price}</span>
+              </button>
+            ))}
           </div>
 
           <hr className="divider" />
