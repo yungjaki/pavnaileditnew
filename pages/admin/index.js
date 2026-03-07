@@ -159,6 +159,16 @@ export default function AdminPage() {
   const [manualPrice, setManualPrice] = useState("");
   const [manualNailLength, setManualNailLength] = useState("");
   const [manualMsg, setManualMsg] = useState("");
+  // Inspo manager state
+  const [inspos, setInspos] = useState([]);
+  const [inspoTitle, setInspoTitle] = useState("");
+  const [inspoCategory, setInspoCategory] = useState("art");
+  const [inspoLength, setInspoLength] = useState("medium");
+  const [inspoServices, setInspoServices] = useState([]);
+  const [inspoAddons, setInspoAddons] = useState([]);
+  const [inspoFile, setInspoFile] = useState(null);
+  const [inspoMsg, setInspoMsg] = useState("");
+  const [inspoLoading, setInspoLoading] = useState(false);
   const calendarRef = useRef(null);
   const fpCalRef = useRef(null);
 
@@ -198,6 +208,18 @@ export default function AdminPage() {
     if (authed) fetchBreaks();
   }, [authed]);
 
+  const fetchInspos = async () => {
+    const res = await fetch("/api/admin/inspos");
+    if (res.ok) {
+      const data = await res.json();
+      setInspos(data.inspos || []);
+    }
+  };
+
+  useEffect(() => {
+    if (authed) fetchInspos();
+  }, [authed]);
+
   // Init FullCalendar when tab switches to calendar
   useEffect(() => {
     if (tab !== "calendar" || !authed || typeof window === "undefined") return;
@@ -224,7 +246,7 @@ export default function AdminPage() {
               },
             })),
             eventDidMount(info) {
-              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} €`;
+              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
             },
           });
           calendar.render();
@@ -283,7 +305,7 @@ export default function AdminPage() {
       body: JSON.stringify({ code: giftCode.toUpperCase(), amount: parseFloat(giftAmount) }),
     });
     if (res.ok) {
-      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}€) е създадена!`);
+      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}лв) е създадена!`);
       setGiftCode("");
       setGiftAmount("");
     } else {
@@ -602,10 +624,11 @@ export default function AdminPage() {
         <div className="tabs">
           {[
             { id: "appointments", label: "📋 Резервации" },
-            { id: "calendar", label: "📅 Календар" },
-            { id: "giftcards", label: "🎁 Подаръчни карти" },
-            { id: "breaks", label: "🌴 Почивки" },
-            { id: "manual", label: "📲 От Instagram" },
+            { id: "calendar",     label: "📅 Календар" },
+            { id: "giftcards",    label: "🎁 Подаръчни карти" },
+            { id: "breaks",       label: "🌴 Почивки" },
+            { id: "manual",       label: "📲 От Instagram" },
+            { id: "inspos",       label: "✨ Инспирации" },
           ].map((t) => (
             <button
               key={t.id}
@@ -642,7 +665,7 @@ export default function AdminPage() {
                     {bookings
                       .reduce((s, b) => s + (parseFloat(b.totalPrice) || 0), 0)
                       .toFixed(0)}
-                    €
+                    лв
                   </div>
                   <div className="stat-label">ОБЩ ПРИХОД</div>
                 </div>
@@ -702,7 +725,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div className="card-price">
-                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} €
+                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} лв
                         </div>
                         {b.designUrl && (
                           <div className="card-design">
@@ -755,7 +778,7 @@ export default function AdminPage() {
               <div className="gift-row">
                 <input
                   type="number"
-                  placeholder="Сума в € (напр. 50)"
+                  placeholder="Сума в лв (напр. 50)"
                   value={giftAmount}
                   onChange={(e) => setGiftAmount(e.target.value)}
                 />
@@ -972,6 +995,152 @@ export default function AdminPage() {
               )}
             </div>
           )}
+
+          {tab === "inspos" && (() => {
+            const ALL_SERVICES = ["Гел - къси нокти","Гел - дълги нокти","Изграждане","Френски","Камъни","Стикери","Буква","Сребърно/златно"];
+            const ALL_ADDONS   = ["3D цветя","3D линии","Blooming gel","Blooming gel цвете","Панделка","Аура","Омбре","Бяло омбре","Животински дизайн"];
+            const toggleArr = (arr, setArr, val) =>
+              arr.includes(val) ? setArr(arr.filter(x => x !== val)) : setArr([...arr, val]);
+
+            return (
+              <div className="gift-box">
+                <h2>✨ Управление на инспирации</h2>
+                <p style={{color:"#999",fontSize:"0.9rem",marginBottom:"1.5rem"}}>
+                  Добави снимки от твои дизайни. Клиентките ги виждат в галерията при записване и услугите се избират автоматично.
+                </p>
+
+                {/* Upload form */}
+                <div style={{background:"linear-gradient(135deg,#fff5fb,#ffe8f4)",borderRadius:"18px",padding:"1.5rem",border:"1.5px solid rgba(249,161,194,0.25)",marginBottom:"2rem"}}>
+                  <h3 style={{...lStyle,fontSize:"0.8rem",marginBottom:"1rem",color:"#e0559e"}}>➕ Добави нова инспирация</h3>
+
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem",marginBottom:"0.75rem"}}>
+                    <div>
+                      <label style={lStyle}>Заглавие</label>
+                      <input type="text" placeholder="Розово омбре..." value={inspoTitle} onChange={e=>setInspoTitle(e.target.value)} style={iStyle} />
+                    </div>
+                    <div>
+                      <label style={lStyle}>Категория</label>
+                      <select value={inspoCategory} onChange={e=>setInspoCategory(e.target.value)} style={iStyle}>
+                        <option value="ombre">🌅 Омбре</option>
+                        <option value="3d">🌸 3D</option>
+                        <option value="aura">🌈 Аура</option>
+                        <option value="minimal">🤍 Минимал</option>
+                        <option value="cute">🎀 Cute</option>
+                        <option value="art">🎨 Арт</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{marginBottom:"0.75rem"}}>
+                    <label style={lStyle}>Снимка</label>
+                    <input
+                      type="file" accept="image/*"
+                      onChange={e => setInspoFile(e.target.files[0])}
+                      style={{...iStyle, padding:"0.5rem 1rem"}}
+                    />
+                  </div>
+
+                  <div style={{marginBottom:"0.75rem"}}>
+                    <label style={lStyle}>Дължина на ноктите</label>
+                    <select value={inspoLength} onChange={e=>setInspoLength(e.target.value)} style={iStyle}>
+                      <option value="short">Къси (0–2mm)</option>
+                      <option value="medium">Средни (3–4mm)</option>
+                      <option value="long">Дълги (5–7mm)</option>
+                      <option value="xlong">X-Дълги (8–10mm)</option>
+                    </select>
+                  </div>
+
+                  <div style={{marginBottom:"0.75rem"}}>
+                    <label style={lStyle}>Авто-услуги (избери)</label>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginTop:"4px"}}>
+                      {ALL_SERVICES.map(s => (
+                        <button key={s} type="button" onClick={() => toggleArr(inspoServices, setInspoServices, s)}
+                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoServices.includes(s)?"linear-gradient(135deg,#f8b7d1,#ff6ec4)":"#fff",color:inspoServices.includes(s)?"#fff":"#c994b0",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{marginBottom:"1.25rem"}}>
+                    <label style={lStyle}>Авто-декорации (избери)</label>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginTop:"4px"}}>
+                      {ALL_ADDONS.map(s => (
+                        <button key={s} type="button" onClick={() => toggleArr(inspoAddons, setInspoAddons, s)}
+                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoAddons.includes(s)?"linear-gradient(135deg,#f8b7d1,#ff6ec4)":"#fff",color:inspoAddons.includes(s)?"#fff":"#c994b0",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    className="gift-create-btn"
+                    disabled={inspoLoading}
+                    onClick={async () => {
+                      if (!inspoTitle || !inspoFile) { setInspoMsg("❌ Нужни са заглавие и снимка"); setTimeout(()=>setInspoMsg(""),3000); return; }
+                      setInspoLoading(true);
+                      const fd = new FormData();
+                      fd.append("title",        inspoTitle);
+                      fd.append("category",     inspoCategory);
+                      fd.append("autoLength",   inspoLength);
+                      fd.append("autoServices", JSON.stringify(inspoServices));
+                      fd.append("autoAddons",   JSON.stringify(inspoAddons));
+                      fd.append("image",        inspoFile);
+                      const res = await fetch("/api/admin/inspos", { method:"POST", body:fd });
+                      setInspoLoading(false);
+                      if (res.ok) {
+                        setInspoMsg("✅ Инспирацията е добавена!");
+                        setInspoTitle(""); setInspoCategory("art"); setInspoLength("medium");
+                        setInspoServices([]); setInspoAddons([]); setInspoFile(null);
+                        fetchInspos();
+                      } else {
+                        const d = await res.json();
+                        setInspoMsg(`❌ ${d.error || "Грешка"}`);
+                      }
+                      setTimeout(()=>setInspoMsg(""),4000);
+                    }}
+                  >
+                    {inspoLoading ? "Качва се..." : "Добави инспирация ✨"}
+                  </button>
+                  {inspoMsg && <div className="gift-msg">{inspoMsg}</div>}
+                </div>
+
+                {/* Existing inspos grid */}
+                {inspos.length > 0 ? (
+                  <>
+                    <h3 style={{...lStyle,marginBottom:"1rem",color:"#e0559e"}}>📸 Текущи инспирации ({inspos.length})</h3>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+                      {inspos.map(ins => (
+                        <div key={ins.id} style={{position:"relative",borderRadius:"16px",overflow:"hidden",aspectRatio:"3/4",boxShadow:"0 4px 16px rgba(249,161,194,0.2)"}}>
+                          {ins.src
+                            ? <img src={ins.src} alt={ins.title} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                            : <div style={{width:"100%",height:"100%",background:ins.placeholder||"linear-gradient(135deg,#f8b7d1,#ff6ec4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"2rem"}}>💅</div>
+                          }
+                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(0deg,rgba(0,0,0,0.65),transparent)",padding:"24px 10px 8px",color:"#fff"}}>
+                            <div style={{fontSize:"0.72rem",fontWeight:700}}>{ins.title}</div>
+                            <div style={{fontSize:"0.62rem",opacity:0.8}}>{ins.category}</div>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Изтрий "${ins.title}"?`)) return;
+                              await fetch(`/api/admin/inspos?id=${ins.id}`, { method:"DELETE" });
+                              fetchInspos();
+                            }}
+                            style={{position:"absolute",top:"8px",right:"8px",background:"rgba(229,62,62,0.85)",border:"none",borderRadius:"50%",width:"28px",height:"28px",color:"#fff",cursor:"pointer",fontSize:"0.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p style={{textAlign:"center",color:"#ccc",fontSize:"0.9rem"}}>Няма добавени инспирации още 🌸</p>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </>
