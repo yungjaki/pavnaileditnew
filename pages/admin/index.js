@@ -875,6 +875,8 @@ export default function AdminPage() {
               {manualMsg && <div className="gift-msg">{manualMsg}</div>}
             </div>
           )}
+
+          {tab === "breaks" && (
             <div className="gift-box">
               <h2>🌴 Управление на почивки</h2>
               <p style={{color:"#999",fontSize:"0.9rem",marginBottom:"1.5rem"}}>
