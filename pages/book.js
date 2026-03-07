@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import NailLengthPicker from "../components/NailLengthPicker";
+import InspoGallery, { INSPOS } from "../components/InspoGallery";
 
 const SERVICES = [
   { name: "Гел - къси нокти", price: 18 },
@@ -55,6 +56,7 @@ export default function Book() {
   const [nailLength, setNailLength] = useState(null);
   const [error, setError] = useState("");
   const [breaks, setBreaks] = useState([]);
+  const [selectedInspoId, setSelectedInspoId] = useState(null);
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
 
@@ -150,6 +152,37 @@ export default function Book() {
   }, 0) + (nailLength ? NAIL_LENGTH_PRICES[nailLength] : 0);
 
   const totalPrice = Math.max(0, totalRaw - giftDiscount);
+
+  const handleInspoSelect = (inspo) => {
+    if (!inspo) {
+      setSelectedInspoId(null);
+      return;
+    }
+    setSelectedInspoId(inspo.id);
+
+    // Auto-select services
+    const newSelected = {};
+    [...SERVICES, ...ADDONS].forEach(svc => {
+      if (inspo.autoServices?.includes(svc.name) || inspo.autoAddons?.includes(svc.name)) {
+        newSelected[svc.name] = 1;
+      }
+    });
+    setSelected(prev => ({ ...prev, ...newSelected }));
+
+    // Auto-set nail length
+    if (inspo.autoLength) setNailLength(inspo.autoLength);
+
+    // Auto-set design as a URL reference (fetch & convert to blob)
+    if (inspo.src) {
+      fetch(inspo.src)
+        .then(r => r.blob())
+        .then(blob => {
+          const file = new File([blob], `inspo-${inspo.id}.jpg`, { type: "image/jpeg" });
+          setDesignFile(file);
+        })
+        .catch(() => {}); // silently fail if image fetch fails
+    }
+  };
 
   const toggleService = (svc) => {
     setSelected(prev => {
@@ -547,6 +580,15 @@ export default function Book() {
 
           <hr className="divider" />
 
+          {/* Inspo Gallery */}
+          <span className="section-label">✨ Избери дизайн от инспирации</span>
+          <p style={{fontSize:"0.82rem",color:"#c994b0",marginBottom:"0.75rem",marginTop:"-0.5rem"}}>
+            Избери любим дизайн — услугите и дължината се избират автоматично 🪄
+          </p>
+          <InspoGallery onSelect={handleInspoSelect} selectedId={selectedInspoId} />
+
+          <hr className="divider" />
+
           <span className="section-label">Дължина на ноктите</span>
           <NailLengthPicker value={nailLength} onChange={setNailLength} />
 
@@ -593,7 +635,17 @@ export default function Book() {
 
           <div className="field">
             <label>Прикачи дизайн (по желание)</label>
-            <input type="file" accept="image/*" onChange={e => setDesignFile(e.target.files[0])} />
+            {selectedInspoId && INSPOS.find(i => i.id === selectedInspoId)?.src ? (
+              <div style={{fontSize:"0.85rem",color:"#e0559e",background:"#fff0f8",borderRadius:"12px",padding:"0.75rem 1rem",border:"1.5px solid rgba(255,110,196,0.25)"}}>
+                🪄 Дизайнът е авто-избран от инспирацията. Можеш да качиш различна снимка:
+              </div>
+            ) : null}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => { setDesignFile(e.target.files[0]); setSelectedInspoId(null); }}
+              style={{marginTop: selectedInspoId ? "8px" : "0"}}
+            />
           </div>
 
           <div className="field">
