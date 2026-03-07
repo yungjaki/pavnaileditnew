@@ -130,6 +130,9 @@ function LoginScreen({ onLogin }) {
 }
 
 // ─── Main admin dashboard ─────────────────────────────────
+const iStyle = { padding:"0.7rem 1rem", borderRadius:"12px", border:"1.5px solid rgba(249,161,194,0.3)", background:"#fdf8fa", fontSize:"0.9rem", fontFamily:"inherit", outline:"none", width:"100%" };
+const lStyle = { fontSize:"0.75rem", fontWeight:700, color:"#aaa", letterSpacing:"1px", textTransform:"uppercase", display:"block", marginBottom:"4px" };
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -146,6 +149,16 @@ export default function AdminPage() {
   const [breakEnd, setBreakEnd] = useState("");
   const [breakLabel, setBreakLabel] = useState("");
   const [breakMsg, setBreakMsg] = useState("");
+  // Manual booking state
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualDate, setManualDate] = useState("");
+  const [manualTime, setManualTime] = useState("");
+  const [manualServices, setManualServices] = useState("");
+  const [manualPrice, setManualPrice] = useState("");
+  const [manualNailLength, setManualNailLength] = useState("");
+  const [manualMsg, setManualMsg] = useState("");
   const calendarRef = useRef(null);
   const fpCalRef = useRef(null);
 
@@ -211,7 +224,7 @@ export default function AdminPage() {
               },
             })),
             eventDidMount(info) {
-              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} €`;
+              info.el.title = `${info.event.title}\n${(Array.isArray(info.event.extendedProps.services) ? info.event.extendedProps.services : [info.event.extendedProps.services]).join(", ")}\nОбщо: ${info.event.extendedProps.totalPrice?.toFixed(2)} лв`;
             },
           });
           calendar.render();
@@ -270,7 +283,7 @@ export default function AdminPage() {
       body: JSON.stringify({ code: giftCode.toUpperCase(), amount: parseFloat(giftAmount) }),
     });
     if (res.ok) {
-      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}€) е създадена!`);
+      setGiftMsg(`✅ Картата "${giftCode.toUpperCase()}" (${giftAmount}лв) е създадена!`);
       setGiftCode("");
       setGiftAmount("");
     } else {
@@ -592,6 +605,7 @@ export default function AdminPage() {
             { id: "calendar", label: "📅 Календар" },
             { id: "giftcards", label: "🎁 Подаръчни карти" },
             { id: "breaks", label: "🌴 Почивки" },
+            { id: "manual", label: "📲 От Instagram" },
           ].map((t) => (
             <button
               key={t.id}
@@ -628,7 +642,7 @@ export default function AdminPage() {
                     {bookings
                       .reduce((s, b) => s + (parseFloat(b.totalPrice) || 0), 0)
                       .toFixed(0)}
-                    €
+                    лв
                   </div>
                   <div className="stat-label">ОБЩ ПРИХОД</div>
                 </div>
@@ -663,7 +677,14 @@ export default function AdminPage() {
                   {displayed.map((b) => (
                     <div key={b.id} className="card">
                       <div className="card-left">
-                        <div className="card-name">{b.name}</div>
+                        <div className="card-name">
+                          {b.name}
+                          {b.source === "instagram" && (
+                            <span style={{marginLeft:"8px",fontSize:"0.7rem",background:"linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",color:"#fff",padding:"2px 8px",borderRadius:"20px",fontWeight:700,verticalAlign:"middle"}}>
+                              📲 Instagram
+                            </span>
+                          )}
+                        </div>
                         <div className="card-meta">
                           <span className="badge">📅 {b.date}</span>
                           <span className="badge">🕐 {b.time}</span>
@@ -681,7 +702,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div className="card-price">
-                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} €
+                          💰 {parseFloat(b.totalPrice || 0).toFixed(2)} лв
                         </div>
                         {b.designUrl && (
                           <div className="card-design">
@@ -734,7 +755,7 @@ export default function AdminPage() {
               <div className="gift-row">
                 <input
                   type="number"
-                  placeholder="Сума в € (напр. 50)"
+                  placeholder="Сума в лв (напр. 50)"
                   value={giftAmount}
                   onChange={(e) => setGiftAmount(e.target.value)}
                 />
@@ -746,7 +767,114 @@ export default function AdminPage() {
             </div>
           )}
 
-          {tab === "breaks" && (
+          {tab === "manual" && (
+            <div className="gift-box">
+              <h2>📲 Добави резервация от Instagram</h2>
+              <p style={{color:"#999",fontSize:"0.9rem",marginBottom:"1.5rem"}}>
+                Добави ръчно резервации направени чрез Instagram DMs. Те ще блокират часа в календара.
+              </p>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem",marginBottom:"0.75rem"}}>
+                <div>
+                  <label style={lStyle}>Име</label>
+                  <input type="text" placeholder="Ана Иванова" value={manualName} onChange={e=>setManualName(e.target.value)} style={iStyle} />
+                </div>
+                <div>
+                  <label style={lStyle}>Телефон</label>
+                  <input type="tel" placeholder="+359 88..." value={manualPhone} onChange={e=>setManualPhone(e.target.value)} style={iStyle} />
+                </div>
+              </div>
+
+              <div style={{marginBottom:"0.75rem"}}>
+                <label style={lStyle}>Имейл (по желание)</label>
+                <input type="email" placeholder="email@example.com" value={manualEmail} onChange={e=>setManualEmail(e.target.value)} style={{...iStyle,width:"100%"}} />
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem",marginBottom:"0.75rem"}}>
+                <div>
+                  <label style={lStyle}>Дата</label>
+                  <input type="date" value={manualDate} onChange={e=>setManualDate(e.target.value)} style={iStyle} />
+                </div>
+                <div>
+                  <label style={lStyle}>Час</label>
+                  <select value={manualTime} onChange={e=>setManualTime(e.target.value)} style={iStyle}>
+                    <option value="">Избери час</option>
+                    <option value="10:00">10:00</option>
+                    <option value="14:00">14:00</option>
+                    <option value="16:30">16:30</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{marginBottom:"0.75rem"}}>
+                <label style={lStyle}>Дължина на ноктите</label>
+                <select value={manualNailLength} onChange={e=>setManualNailLength(e.target.value)} style={{...iStyle,width:"100%"}}>
+                  <option value="">Не е избрана</option>
+                  <option value="short">Къси (0–2mm)</option>
+                  <option value="medium">Средни (3–4mm)</option>
+                  <option value="long">Дълги (5–7mm)</option>
+                  <option value="xlong">X-Дълги (8–10mm)</option>
+                </select>
+              </div>
+
+              <div style={{marginBottom:"0.75rem"}}>
+                <label style={lStyle}>Услуги</label>
+                <input type="text" placeholder="Гел маникюр, Омбре, 3D цветя..." value={manualServices} onChange={e=>setManualServices(e.target.value)} style={{...iStyle,width:"100%"}} />
+              </div>
+
+              <div style={{marginBottom:"1.25rem"}}>
+                <label style={lStyle}>Цена (€)</label>
+                <input type="number" placeholder="20.00" value={manualPrice} onChange={e=>setManualPrice(e.target.value)} style={{...iStyle,width:"100%"}} />
+              </div>
+
+              <button
+                className="gift-create-btn"
+                onClick={async () => {
+                  if (!manualName || !manualDate || !manualTime) {
+                    setManualMsg("❌ Попълни поне: Име, Дата и Час");
+                    setTimeout(() => setManualMsg(""), 3000);
+                    return;
+                  }
+                  // Format date to dd.mm.yyyy
+                  const [y,m,d] = manualDate.split("-");
+                  const formattedDate = `${d}.${m}.${y}`;
+                  const services = manualServices
+                    ? manualServices.split(",").map(s => s.trim()).filter(Boolean)
+                    : ["Instagram резервация"];
+
+                  const res = await fetch("/api/admin/manual-booking", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      name: manualName,
+                      phone: manualPhone || "—",
+                      clientEmail: manualEmail || "",
+                      date: formattedDate,
+                      time: manualTime,
+                      services,
+                      totalPrice: manualPrice || "0",
+                      nailLength: manualNailLength || null,
+                      source: "instagram",
+                    }),
+                  });
+                  if (res.ok) {
+                    setManualMsg("✅ Резервацията е добавена!");
+                    setManualName(""); setManualPhone(""); setManualEmail("");
+                    setManualDate(""); setManualTime(""); setManualServices("");
+                    setManualPrice(""); setManualNailLength("");
+                    fetchBookings();
+                  } else {
+                    const d = await res.json();
+                    setManualMsg(`❌ ${d.error || "Грешка"}`);
+                  }
+                  setTimeout(() => setManualMsg(""), 4000);
+                }}
+              >
+                Добави резервация 📲
+              </button>
+              {manualMsg && <div className="gift-msg">{manualMsg}</div>}
+            </div>
+          )}
             <div className="gift-box">
               <h2>🌴 Управление на почивки</h2>
               <p style={{color:"#999",fontSize:"0.9rem",marginBottom:"1.5rem"}}>
