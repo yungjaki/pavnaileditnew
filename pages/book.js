@@ -567,7 +567,7 @@ export default function Book() {
 
           <div className="field">
             <label>Пълно Име</label>
-            <input type="text" placeholder="Павлина Иванова" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="Име и фамилия (и прякор става 🩷)" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="field">
             <label>Телефон</label>
@@ -581,7 +581,7 @@ export default function Book() {
           <hr className="divider" />
 
           {/* Inspo Gallery */}
-          <span className="section-label">✨ Избери дизайн от инспирации</span>
+          <span className="section-label">✨ Инспотааа</span>
           <p style={{fontSize:"0.82rem",color:"#c994b0",marginBottom:"0.75rem",marginTop:"-0.5rem"}}>
             Избери любим дизайн — услугите и дължината се избират автоматично 🪄
           </p>
