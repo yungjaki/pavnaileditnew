@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import NailLengthPicker from "../components/NailLengthPicker";
-import InspoGallery, { INSPOS } from "../components/InspoGallery";
+import InspoGallery from "../components/InspoGallery";
 
 const SERVICES = [
   { name: "Гел - къси нокти", price: 18 },
@@ -635,16 +635,10 @@ export default function Book() {
 
           <div className="field">
             <label>Прикачи дизайн (по желание)</label>
-            {selectedInspoId && INSPOS.find(i => i.id === selectedInspoId)?.src ? (
-              <div style={{fontSize:"0.85rem",color:"#e0559e",background:"#fff0f8",borderRadius:"12px",padding:"0.75rem 1rem",border:"1.5px solid rgba(255,110,196,0.25)"}}>
-                🪄 Дизайнът е авто-избран от инспирацията. Можеш да качиш различна снимка:
-              </div>
-            ) : null}
             <input
               type="file"
               accept="image/*"
               onChange={e => { setDesignFile(e.target.files[0]); setSelectedInspoId(null); }}
-              style={{marginTop: selectedInspoId ? "8px" : "0"}}
             />
           </div>
 
