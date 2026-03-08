@@ -254,221 +254,181 @@ export default function Book() {
   };
 
   const NAIL_LENGTHS = [
-    { key: "short",  label: "Къси",    range: "0–2",  magnets: 2,  nailH: 18, price: "Базова",  extra: 0   },
-    { key: "medium", label: "Средни",  range: "3–4",  magnets: 4,  nailH: 30, price: "+2.5€",   extra: 2.5 },
-    { key: "long",   label: "Дълги",   range: "5–7",  magnets: 6,  nailH: 44, price: "+5€",     extra: 5   },
-    { key: "xlong",  label: "X-Дълги", range: "8–10", magnets: 9,  nailH: 60, price: "+7.5€",   extra: 7.5 },
+    { key: "short",  label: "Къси",    range: "0–2",  magnets: 2,  nailH: 22,  price: "Базова", extra: 0   },
+    { key: "medium", label: "Средни",  range: "3–4",  magnets: 4,  nailH: 38,  price: "+2.5€",  extra: 2.5 },
+    { key: "long",   label: "Дълги",   range: "5–7",  magnets: 6,  nailH: 58,  price: "+5€",    extra: 5   },
+    { key: "xlong",  label: "X-Дълги", range: "8–10", magnets: 9,  nailH: 80,  price: "+7.5€",  extra: 7.5 },
   ];
 
   const NailLengthPicker = ({ value, onChange }) => {
     const [hovered, setHovered] = useState(null);
     const active = hovered || value;
-    const activeData = NAIL_LENGTHS.find(n => n.key === active);
+    const activeData = NAIL_LENGTHS.find(n => n.key === active) || NAIL_LENGTHS[0];
+    const nailH = activeData.nailH;
 
     return (
       <>
         <style>{`
           .nlp-wrap { margin-bottom: 1rem; }
+
           .nlp-scene {
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            gap: 32px;
-            background: linear-gradient(160deg, #fff5fa, #fce8f3);
+            gap: 40px;
+            background: linear-gradient(160deg, #fdfaf8, #faf3ee);
             border-radius: 20px;
-            padding: 20px 16px 0;
+            padding: 24px 16px 20px;
             margin-bottom: 14px;
-            border: 1.5px solid rgba(249,161,194,0.25);
-            min-height: 160px;
+            border: 1.5px solid rgba(220,190,170,0.3);
+            min-height: 150px;
             position: relative;
             overflow: hidden;
           }
-          .nlp-scene::before {
+          .nlp-scene::after {
             content: '';
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            height: 40px;
-            background: linear-gradient(180deg, transparent, rgba(249,161,194,0.08));
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(200,170,150,0.2), transparent);
           }
-          /* FINGER */
-          .nlp-finger-wrap {
+
+          /* Nail only — no finger */
+          .nlp-nail-only {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative;
+            justify-content: flex-end;
           }
-          .nlp-nail {
-            width: 44px;
-            border-radius: 50% 50% 8px 8px;
-            background: linear-gradient(160deg, #ffd6ec, #f06aad);
-            box-shadow: inset -3px -3px 6px rgba(0,0,0,0.08), 0 2px 8px rgba(240,106,173,0.3);
+          .nlp-nail-shape {
+            width: 42px;
+            border-radius: 50% 50% 6px 6px;
+            /* Nude / natural nail color */
+            background: linear-gradient(160deg, #f5e6d8, #e8d0bc, #dfc4aa);
+            box-shadow:
+              inset -2px -3px 6px rgba(0,0,0,0.06),
+              inset 1px 1px 4px rgba(255,255,255,0.5),
+              0 4px 16px rgba(180,140,110,0.2);
             transition: height 0.5s cubic-bezier(0.34,1.56,0.64,1);
             position: relative;
-            z-index: 2;
           }
-          .nlp-nail::after {
+          /* Shine highlight */
+          .nlp-nail-shape::before {
             content: '';
             position: absolute;
-            top: 5px; left: 6px;
-            width: 12px; height: 6px;
-            background: rgba(255,255,255,0.4);
+            top: 8px; left: 7px;
+            width: 10px; height: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.45), transparent);
             border-radius: 50%;
-            transform: rotate(-20deg);
+            transform: rotate(-12deg);
           }
-          .nlp-finger-body {
-            width: 48px;
-            height: 90px;
-            background: linear-gradient(180deg, #fde8d8, #f5cdb0);
-            border-radius: 0 0 24px 24px;
-            box-shadow: inset -4px 0 8px rgba(0,0,0,0.06), 2px 4px 12px rgba(0,0,0,0.08);
-            position: relative;
-            z-index: 1;
+          /* Subtle cuticle base line */
+          .nlp-nail-base {
+            width: 44px;
+            height: 6px;
+            background: linear-gradient(180deg, #e0c8b0, #d4b89a);
+            border-radius: 0 0 6px 6px;
+            margin-top: -1px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
           }
-          .nlp-finger-body::before {
-            content: '';
-            position: absolute;
-            top: 8px; left: 8px;
-            width: 6px; height: 30px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 3px;
-          }
+
           /* MAGNETS */
           .nlp-magnets {
             display: flex;
             flex-direction: column-reverse;
             align-items: center;
             gap: 3px;
-            padding-bottom: 8px;
+            padding-bottom: 4px;
           }
           .nlp-magnet {
-            width: 36px;
-            height: 14px;
+            width: 34px;
+            height: 13px;
             border-radius: 4px;
-            background: linear-gradient(135deg, #d0d0d0, #a8a8a8);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 7px;
-            color: rgba(255,255,255,0.7);
-            font-weight: 700;
-            letter-spacing: 1px;
-            transition: all 0.3s;
-            animation: magnetDrop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+            background: linear-gradient(135deg, #d8d0c8, #b0a898);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.35);
+            animation: magnetDrop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
           }
           @keyframes magnetDrop {
-            from { opacity: 0; transform: translateY(-10px) scale(0.8); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity:0; transform:translateY(-8px) scale(0.85); }
+            to   { opacity:1; transform:translateY(0)    scale(1); }
           }
-          /* INFO PANEL */
+
+          /* Info panel */
           .nlp-info {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-end;
-            padding-bottom: 16px;
-            min-width: 100px;
+            padding-bottom: 4px;
+            min-width: 90px;
           }
+          .nlp-info-mm   { font-size:0.68rem; color:#b8a898; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
           .nlp-info-range {
             font-size: 2rem;
             font-family: 'Cormorant Garamond', serif;
             font-weight: 600;
-            color: var(--pink-deep);
+            color: #8b6f5e;
             line-height: 1;
-            transition: all 0.3s;
+            transition: all 0.25s;
           }
-          .nlp-info-mm {
-            font-size: 0.72rem;
-            color: var(--text-light);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-          }
-          .nlp-info-label {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: 4px;
-          }
+          .nlp-info-label { font-size:0.95rem; font-weight:700; color:#6b5244; margin: 3px 0 2px; }
           .nlp-info-price {
-            font-size: 0.85rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 0.82rem; font-weight: 600;
+            background: linear-gradient(135deg, #c9956e, #e0a882);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
           }
-          .nlp-info-magnets {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            margin-top: 2px;
-          }
-          /* BUTTONS */
-          .nlp-buttons {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-          }
+
+          /* Selector buttons */
+          .nlp-buttons { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
           .nlp-btn {
             padding: 0.6rem 0.4rem;
             border-radius: 14px;
-            border: 2px solid rgba(249,161,194,0.3);
-            background: #fdf8fa;
+            border: 2px solid rgba(220,190,160,0.35);
+            background: #fdfaf8;
             cursor: pointer;
-            transition: all 0.22s;
+            transition: all 0.2s;
             font-family: 'DM Sans', sans-serif;
             text-align: center;
             outline: none;
           }
-          .nlp-btn:hover { border-color: var(--pink-mid); background: #fff0f6; transform: translateY(-2px); }
+          .nlp-btn:hover { border-color: #d4a882; background: #fdf4ee; transform: translateY(-2px); }
           .nlp-btn.selected {
-            border-color: #ff6ec4;
-            background: linear-gradient(135deg, #fff0f8, #ffe4f2);
-            box-shadow: 0 4px 14px rgba(255,110,196,0.25);
+            border-color: #c9956e;
+            background: linear-gradient(135deg, #fdf0e8, #fae0cc);
+            box-shadow: 0 4px 14px rgba(200,140,100,0.2);
             transform: translateY(-3px);
           }
-          .nlp-btn-label { font-size: 0.78rem; font-weight: 700; color: var(--text-dark); display: block; }
-          .nlp-btn-range { font-size: 0.68rem; color: var(--text-light); display: block; margin: 1px 0; }
-          .nlp-btn-price { font-size: 0.7rem; font-weight: 600; color: var(--pink-deep); display: block; }
-          .nlp-btn.selected .nlp-btn-label { color: var(--pink-deep); }
-          .nlp-hint {
-            text-align: center;
-            font-size: 0.78rem;
-            color: var(--text-light);
-            margin-top: 8px;
-            letter-spacing: 0.3px;
-          }
+          .nlp-btn-label { font-size:0.78rem; font-weight:700; color:#6b5244; display:block; }
+          .nlp-btn-range { font-size:0.66rem; color:#b8a898; display:block; margin:1px 0; }
+          .nlp-btn-price { font-size:0.7rem; font-weight:600; color:#c9956e; display:block; }
+          .nlp-hint { text-align:center; font-size:0.78rem; color:#c0a898; margin-top:8px; }
         `}</style>
 
         <div className="nlp-wrap">
-          {/* Visual scene */}
           <div className="nlp-scene">
-            {/* Finger with animated nail */}
-            <div className="nlp-finger-wrap">
-              <div className="nlp-nail" style={{ height: activeData ? activeData.nailH : 18 }} />
-              <div className="nlp-finger-body" />
+            {/* Nail only */}
+            <div className="nlp-nail-only">
+              <div className="nlp-nail-shape" style={{ height: nailH }} />
+              <div className="nlp-nail-base" />
             </div>
 
             {/* Stacked magnets */}
             <div className="nlp-magnets">
-              {Array.from({ length: activeData ? activeData.magnets : 2 }).map((_, i) => (
-                <div key={i} className="nlp-magnet" style={{ animationDelay: `${i * 0.06}s` }}>
-                  ▬▬
-                </div>
+              {Array.from({ length: activeData.magnets }).map((_, i) => (
+                <div key={i} className="nlp-magnet" style={{ animationDelay: `${i * 0.05}s` }} />
               ))}
             </div>
 
             {/* Info */}
             <div className="nlp-info">
-              <div className="nlp-info-mm">магнити / мм</div>
-              <div className="nlp-info-range">{activeData ? activeData.range : "0–2"}</div>
-              <div className="nlp-info-label">{activeData ? activeData.label : "Избери"}</div>
-              <div className="nlp-info-price">{activeData ? activeData.price : "—"}</div>
-              <div className="nlp-info-magnets">{activeData ? `${activeData.magnets} магнита` : ""}</div>
+              <div className="nlp-info-mm">мм</div>
+              <div className="nlp-info-range">{activeData.range}</div>
+              <div className="nlp-info-label">{activeData.label}</div>
+              <div className="nlp-info-price">{activeData.price}</div>
             </div>
           </div>
 
-          {/* Selector buttons */}
           <div className="nlp-buttons">
             {NAIL_LENGTHS.map(n => (
               <button
