@@ -57,6 +57,9 @@ export default function Book() {
   const [error, setError] = useState("");
   const [breaks, setBreaks] = useState([]);
   const [selectedInspoId, setSelectedInspoId] = useState(null);
+  const [waitlistTime, setWaitlistTime] = useState(null); // which slot to join waitlist for
+  const [waitlistDone, setWaitlistDone] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
 
@@ -240,6 +243,8 @@ export default function Book() {
       localStorage.setItem("pavBooking", data.id);
       localStorage.setItem("pavBookingDate", selectedDate);
       localStorage.setItem("pavBookingTime", selectedTime);
+      localStorage.setItem("pavBookingPhone", phone);
+      if (data.stamps) localStorage.setItem("pavStamps", JSON.stringify(data.stamps));
       window.location.href = "/already-booked?success=true";
     } else if (data?.error === "ALREADY_BOOKED") {
       window.location.href = "/already-booked";
@@ -541,7 +546,10 @@ export default function Book() {
         .time-btn { padding: 0.8rem; border-radius: 14px; border: 1.5px solid rgba(249,161,194,0.3); background: #fdf8fa; font-size: 0.95rem; font-weight: 600; color: var(--text-mid); cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
         .time-btn:hover:not(:disabled) { border-color: var(--pink-mid); background: #fff0f6; }
         .time-btn.active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(255,110,196,0.35); }
-        .time-btn:disabled { opacity: 0.4; cursor: not-allowed; background: #f5e0e8; }
+        .time-btn:disabled { opacity: 0.75; cursor: pointer; }
+        .time-btn.booked { background: #fdf0f5; border-color: rgba(249,161,194,0.2); color: #d4a0bc; font-size: 0.78rem; }
+        .time-btn.booked:hover { background: #fff0f8; border-color: rgba(249,161,194,0.4); color: #c94090; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
         .gift-row { display: flex; gap: 0.75rem; align-items: center; }
         .gift-row input { flex: 1; }
         .gift-btn { white-space: nowrap; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid var(--pink-mid); background: #fff; color: var(--pink-deep); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
@@ -567,7 +575,7 @@ export default function Book() {
 
           <div className="field">
             <label>Пълно Име</label>
-            <input type="text" placeholder="Име и фамилия (и прякор става 🩷)" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="Павлина Иванова" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="field">
             <label>Телефон</label>
@@ -581,7 +589,7 @@ export default function Book() {
           <hr className="divider" />
 
           {/* Inspo Gallery */}
-          <span className="section-label">✨ Инспотааа</span>
+          <span className="section-label">✨ Избери дизайн от инспирации</span>
           <p style={{fontSize:"0.82rem",color:"#c994b0",marginBottom:"0.75rem",marginTop:"-0.5rem"}}>
             Избери любим дизайн — услугите и дължината се избират автоматично 🪄
           </p>
@@ -620,14 +628,74 @@ export default function Book() {
                   <button
                     key={time}
                     type="button"
-                    className={`time-btn ${selectedTime === time ? "active" : ""}`}
+                    className={`time-btn ${selectedTime === time ? "active" : ""} ${!available ? "booked" : ""}`}
                     disabled={!available}
-                    onClick={() => setSelectedTime(time)}
+                    onClick={() => {
+                      if (available) {
+                        setSelectedTime(time);
+                        setWaitlistTime(null);
+                        setWaitlistDone(false);
+                      } else {
+                        setWaitlistTime(waitlistTime === time ? null : time);
+                        setWaitlistDone(false);
+                      }
+                    }}
                   >
-                    {available ? time : "Зает"}
+                    {available ? time : (
+                      <span>
+                        <span style={{display:"block",fontSize:"0.8rem"}}>{time}</span>
+                        <span style={{fontSize:"0.65rem",opacity:0.75}}>📋 чакай</span>
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
+
+              {/* Waitlist join form */}
+              {waitlistTime && !waitlistDone && (
+                <div style={{marginTop:"1rem",background:"linear-gradient(135deg,#fff5fb,#ffe8f4)",borderRadius:"16px",padding:"1.25rem",border:"1.5px solid rgba(249,161,194,0.3)",animation:"fadeIn 0.3s ease"}}>
+                  <p style={{margin:"0 0 0.75rem",fontSize:"0.85rem",fontWeight:700,color:"#c94090"}}>
+                    📋 Запиши се в чакащия списък за {waitlistTime}
+                  </p>
+                  <p style={{margin:"0 0 0.75rem",fontSize:"0.78rem",color:"#c994b0"}}>
+                    Ако някой отмени — ще те уведомим веднага по имейл 💌
+                  </p>
+                  <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+                    <input type="text"    placeholder="Твоето име"    value={name}  onChange={e=>setName(e.target.value)}  style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
+                    <input type="tel"     placeholder="+359 88..."    value={phone} onChange={e=>setPhone(e.target.value)} style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
+                    <input type="email"   placeholder="Имейл адрес"  value={email} onChange={e=>setEmail(e.target.value)} style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
+                    <button
+                      type="button"
+                      disabled={waitlistLoading}
+                      onClick={async () => {
+                        if (!name || !phone || !email) return;
+                        setWaitlistLoading(true);
+                        const res = await fetch("/api/waitlist", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name, phone, email, date: selectedDate, time: waitlistTime }),
+                        });
+                        setWaitlistLoading(false);
+                        if (res.ok) {
+                          setWaitlistDone(true);
+                        }
+                      }}
+                      style={{padding:"0.75rem",borderRadius:"10px",background:"linear-gradient(135deg,#f8b7d1,#ff6ec4)",color:"#fff",fontWeight:700,fontSize:"0.9rem",border:"none",cursor:"pointer",fontFamily:"inherit"}}
+                    >
+                      {waitlistLoading ? "Записване..." : "Запиши се в списъка 📋"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Waitlist success */}
+              {waitlistDone && (
+                <div style={{marginTop:"1rem",background:"linear-gradient(135deg,#f0fff4,#e6ffed)",borderRadius:"16px",padding:"1.25rem",border:"1.5px solid rgba(72,187,120,0.3)",textAlign:"center"}}>
+                  <div style={{fontSize:"1.8rem",marginBottom:"6px"}}>✅</div>
+                  <p style={{margin:0,fontWeight:700,color:"#276749",fontSize:"0.95rem"}}>Записана си в чакащия списък!</p>
+                  <p style={{margin:"6px 0 0",fontSize:"0.8rem",color:"#68b794"}}>Ще получиш имейл веднага щом се освободи часът 💌</p>
+                </div>
+              )}
             </div>
           )}
 

@@ -2,6 +2,7 @@ import "../styles/globals.css";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import FallingElements from "../components/FallingElements";
+import SplashScreen from "../components/SplashScreen";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function App({ Component, pageProps }) {
         <link rel="apple-touch-icon" href="/favicon-192.png" />
         <meta name="theme-color" content="#f8b7d1" />
       </Head>
+      {!isAdmin && <SplashScreen />}
       {!isAdmin && <FallingElements />}
       <Component {...pageProps} />
     </>
