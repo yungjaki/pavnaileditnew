@@ -52,10 +52,14 @@ export default function Home() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [hasBooking, setHasBooking] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     setHasBooking(hasActiveBooking());
-    const onScroll = () => setScrolled(window.scrollY > 300);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 300);
+      setScrollY(window.scrollY);
+    };
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -212,6 +216,44 @@ export default function Home() {
           transform: translateY(-4px) scale(1.05);
           box-shadow: 0 18px 50px rgba(240,106,173,0.58);
           color: #fff;
+        }
+
+        /* Parallax blobs */
+        .parallax-blob {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          will-change: transform;
+        }
+        .blob-1 {
+          width: 500px; height: 500px;
+          top: -120px; left: -100px;
+          background: radial-gradient(circle, rgba(249,161,194,0.18) 0%, transparent 70%);
+        }
+        .blob-2 {
+          width: 400px; height: 400px;
+          top: 60px; right: -80px;
+          background: radial-gradient(circle, rgba(255,110,196,0.12) 0%, transparent 70%);
+        }
+        .blob-3 {
+          width: 300px; height: 300px;
+          bottom: -60px; left: 30%;
+          background: radial-gradient(circle, rgba(248,183,209,0.2) 0%, transparent 70%);
+        }
+        /* Floating emoji decorations */
+        .parallax-float {
+          position: absolute;
+          pointer-events: none;
+          will-change: transform;
+          user-select: none;
+          line-height: 1;
+        }
+        .float-1 { font-size: 2.5rem; top: 18%; left: 8%;  opacity: 0.6; }
+        .float-2 { font-size: 1.8rem; top: 25%; right: 10%; opacity: 0.5; }
+        .float-3 { font-size: 2rem;   bottom: 28%; left: 12%; opacity: 0.45; }
+        .float-4 { font-size: 1.5rem; bottom: 32%; right: 8%; opacity: 0.5; }
+        @media (max-width: 600px) {
+          .float-1, .float-2, .float-3, .float-4 { display: none; }
         }
 
         /* ── SECTIONS ── */
@@ -454,7 +496,17 @@ export default function Home() {
 
         {/* ── HERO ── */}
         <div className="hero">
-          <div className="hero-content">
+          {/* Parallax background blobs */}
+          <div className="parallax-blob blob-1" style={{ transform: `translateY(${scrollY * 0.35}px)` }} />
+          <div className="parallax-blob blob-2" style={{ transform: `translateY(${scrollY * 0.2}px)` }} />
+          <div className="parallax-blob blob-3" style={{ transform: `translateY(${scrollY * 0.5}px)` }} />
+          {/* Floating nail emojis */}
+          <span className="parallax-float float-1" style={{ transform: `translateY(${scrollY * 0.25}px) rotate(${scrollY * 0.04}deg)` }}>💅</span>
+          <span className="parallax-float float-2" style={{ transform: `translateY(${scrollY * 0.4}px) rotate(${-scrollY * 0.03}deg)` }}>✨</span>
+          <span className="parallax-float float-3" style={{ transform: `translateY(${scrollY * 0.15}px) rotate(${scrollY * 0.05}deg)` }}>🌸</span>
+          <span className="parallax-float float-4" style={{ transform: `translateY(${scrollY * 0.3}px) rotate(${-scrollY * 0.02}deg)` }}>💎</span>
+          {/* Content moves slightly slower */}
+          <div className="hero-content" style={{ transform: `translateY(${scrollY * 0.12}px)` }}>
             <span className="hero-eyebrow">✨ Plovdiv, Bulgaria</span>
             <h1>
               Book your<br /><em>appointment</em> 💅🏻

@@ -5,27 +5,27 @@ import NailLengthPicker from "../components/NailLengthPicker";
 import InspoGallery from "../components/InspoGallery";
 
 const SERVICES = [
-  { name: "Гел - къси нокти", price: 18 },
-  { name: "Гел - дълги нокти", price: 20 },
-  { name: "Изграждане", price: 28 },
-  { name: "1 нокът", price: 1.50, countable: true, max: 5 },
-  { name: "Френски", price: 2 },
-  { name: "Камъни", price: 0.2 },
-  { name: "Стикери", price: 1 },
-  { name: "Буква", price: 1 },
-  { name: "Сребърно/златно", price: 2 },
+  { name: "Гел - къси нокти",  price: 18,                icon: "💅" },
+  { name: "Гел - дълги нокти", price: 20,                icon: "💅" },
+  { name: "Изграждане",        price: 28,                icon: "🔨" },
+  { name: "1 нокът",           price: 1.50, countable: true, max: 5, icon: "☝️" },
+  { name: "Френски",           price: 2,                 icon: "🤍" },
+  { name: "Камъни",            price: 0.2,               icon: "💎" },
+  { name: "Стикери",           price: 1,                 icon: "⭐" },
+  { name: "Буква",             price: 1,                 icon: "🔤" },
+  { name: "Сребърно/златно",   price: 2,                 icon: "✨" },
 ];
 
 const ADDONS = [
-  { name: "3D цветя", price: 4, countable: true, max: 4 },
-  { name: "3D линии", price: 4 },
-  { name: "Blooming gel", price: 3 },
-  { name: "Blooming gel цвете", price: 4 },
-  { name: "Панделка", price: 2, countable: true, max: 4 },
-  { name: "Аура", price: 3.5 },
-  { name: "Омбре", price: 3.5 },
-  { name: "Бяло омбре", price: 4 },
-  { name: "Животински дизайн", price: 3 },
+  { name: "3D цветя",           price: 4, countable: true, max: 4, icon: "🌸" },
+  { name: "3D линии",           price: 4,                icon: "〰️" },
+  { name: "Blooming gel",       price: 3,                icon: "🌊" },
+  { name: "Blooming gel цвете", price: 4,                icon: "🌺" },
+  { name: "Панделка",           price: 2, countable: true, max: 4, icon: "🎀" },
+  { name: "Аура",               price: 3.5,              icon: "🔮" },
+  { name: "Омбре",              price: 3.5,              icon: "🌅" },
+  { name: "Бяло омбре",         price: 4,                icon: "🤍" },
+  { name: "Животински дизайн",  price: 3,                icon: "🐆" },
 ];
 
 const TIMES = ["10:00", "14:00", "16:30"];
@@ -465,14 +465,17 @@ export default function Book() {
         title={isDisabled ? "Не е съвместимо с избраната дължина" : ""}
         disabled={isDisabled}
       >
-        {svc.name}
+        {svc.icon && <span className="chip-icon">{svc.icon}</span>}
+        <span className="chip-name">{svc.name}</span>
         {active && svc.countable && <span className="chip-count">{count}</span>}
         {active && <span className="chip-price">{svc.price}€</span>}
         <style jsx>{`
-          .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 1rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
+          .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0.5rem 0.9rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
           .chip:hover:not(:disabled) { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
           .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
           .chip-disabled { opacity: 0.35; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
+          .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+          .chip-name { line-height: 1.2; }
           .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
           .chip-price { font-size: 0.8rem; opacity: 0.9; }
         `}</style>
