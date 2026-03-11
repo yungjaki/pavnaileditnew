@@ -1,5 +1,6 @@
 import { bookingsCol } from "../../../lib/firebase";
 import { parse as parseCookie } from "cookie";
+import { addBookingToCalendar } from "../../../lib/calendar";
 
 function authed(req) {
   const cookies = parseCookie(req.headers.cookie || "");
@@ -39,5 +40,17 @@ export default async function handler(req, res) {
     createdAt: new Date().toISOString(),
   });
 
+  // Add to Google Calendar
+  const calEventId = await addBookingToCalendar({
+    name, phone: phone || "—", date, time,
+    services: Array.isArray(services) ? services : [services],
+    totalPrice: totalPrice || "0",
+    nailLength: nailLength || null,
+  });
+  if (calEventId) {
+    await docRef.update({ calEventId });
+  }
+
   return res.status(200).json({ id: docRef.id });
 }
+

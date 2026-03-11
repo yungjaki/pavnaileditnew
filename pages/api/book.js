@@ -3,6 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import { bookingsCol } from "../../lib/firebase";
 import { sendClientConfirmation, sendOwnerNotification } from "../../lib/email";
+import { addBookingToCalendar, removeBookingFromCalendar } from "../../lib/calendar";
 
 export const config = { api: { bodyParser: false } };
 
@@ -76,7 +77,16 @@ export default async function handler(req, res) {
           createdAt: new Date().toISOString(),
         });
 
-        // Send emails (awaited so they complete before function exits)
+        // Add to Pavlina's Google Calendar (non-blocking)
+        const calEventId = await addBookingToCalendar({
+          name, phone, date, time, services, totalPrice, nailLength,
+        });
+        // Store calEventId so we can delete it on cancellation
+        if (calEventId) {
+          await docRef.update({ calEventId });
+        }
+
+        // Send emails
         const emailData = { name, email: clientEmail, phone, date, time, services, totalPrice, designUrl, nailLength };
         await Promise.all([
           sendClientConfirmation(emailData).catch(e => console.error("Client email failed:", e.message)),
@@ -104,8 +114,14 @@ export default async function handler(req, res) {
       const doc    = await docRef.get();
       if (!doc.exists) return res.status(404).json({ error: "Not found" });
 
-      const { name, clientEmail, date, time } = doc.data();
+      const { name, clientEmail, date, time, calEventId } = doc.data();
       await docRef.delete();
+
+      // Remove from Google Calendar
+      if (calEventId) {
+        removeBookingFromCalendar(calEventId)
+          .catch(e => console.error("Calendar delete failed:", e.message));
+      }
 
       if (clientEmail) {
         const { sendCancellationEmail } = await import("../../lib/email");
