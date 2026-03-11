@@ -454,32 +454,69 @@ export default function Book() {
   const ServiceChip = ({ svc }) => {
     const count = selected[svc.name] || 0;
     const active = count > 0;
+    const [showTip, setShowTip] = useState(false);
     const isDisabled =
       (svc.name === "Гел - къси нокти"  && (nailLength === "long"  || nailLength === "xlong")) ||
       (svc.name === "Гел - дълги нокти" && (nailLength === "short" || nailLength === "medium"));
     return (
-      <button
-        className={`chip ${active ? "chip-active" : ""} ${isDisabled ? "chip-disabled" : ""}`}
-        onClick={() => !isDisabled && toggleService(svc)}
-        type="button"
-        title={isDisabled ? "Не е съвместимо с избраната дължина" : ""}
-        disabled={isDisabled}
-      >
-        {svc.icon && <span className="chip-icon">{svc.icon}</span>}
-        <span className="chip-name">{svc.name}</span>
-        {active && svc.countable && <span className="chip-count">{count}</span>}
-        {active && <span className="chip-price">{svc.price}€</span>}
-        <style jsx>{`
-          .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0.5rem 0.9rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
-          .chip:hover:not(:disabled) { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
-          .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
-          .chip-disabled { opacity: 0.35; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
-          .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
-          .chip-name { line-height: 1.2; }
-          .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
-          .chip-price { font-size: 0.8rem; opacity: 0.9; }
-        `}</style>
-      </button>
+      <div style={{ position: "relative", display: "inline-block" }}>
+        {/* Tooltip */}
+        {showTip && !isDisabled && !active && (
+          <div style={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "linear-gradient(135deg, #2d1f26, #3d2535)",
+            color: "#fff",
+            padding: "6px 12px",
+            borderRadius: "10px",
+            fontSize: "0.78rem",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            zIndex: 50,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            animation: "tipFadeIn 0.15s ease",
+          }}>
+            {svc.countable ? `${svc.price}€ / бр.` : `${svc.price}€`}
+            {/* Arrow */}
+            <div style={{
+              position: "absolute",
+              top: "100%", left: "50%",
+              transform: "translateX(-50%)",
+              borderLeft: "5px solid transparent",
+              borderRight: "5px solid transparent",
+              borderTop: "5px solid #3d2535",
+            }} />
+          </div>
+        )}
+        <button
+          className={`chip ${active ? "chip-active" : ""} ${isDisabled ? "chip-disabled" : ""}`}
+          onClick={() => !isDisabled && toggleService(svc)}
+          type="button"
+          title={isDisabled ? "Не е съвместимо с избраната дължина" : ""}
+          disabled={isDisabled}
+          onMouseEnter={() => setShowTip(true)}
+          onMouseLeave={() => setShowTip(false)}
+        >
+          {svc.icon && <span className="chip-icon">{svc.icon}</span>}
+          <span className="chip-name">{svc.name}</span>
+          {active && svc.countable && <span className="chip-count">{count}</span>}
+          {active && <span className="chip-price">{svc.price}€</span>}
+          <style jsx>{`
+            @keyframes tipFadeIn { from { opacity:0; transform:translateX(-50%) translateY(4px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+            .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0.5rem 0.9rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
+            .chip:hover:not(:disabled) { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
+            .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
+            .chip-disabled { opacity: 0.35; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
+            .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+            .chip-name { line-height: 1.2; }
+            .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+            .chip-price { font-size: 0.8rem; opacity: 0.9; }
+          `}</style>
+        </button>
+      </div>
     );
   };
 

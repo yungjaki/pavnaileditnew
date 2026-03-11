@@ -1,6 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 const CircularGallery = dynamic(() => import("../components/CircularGallery"), { ssr: false });
@@ -61,7 +61,27 @@ export default function Home() {
       setScrollY(window.scrollY);
     };
     window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+
+    // Intersection observer for scroll-reveal animations
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add("revealed");
+          observer.unobserve(e.target);
+        }
+      }),
+      { threshold: 0.12 }
+    );
+    // Small delay so React has finished rendering all .reveal elements
+    const t = setTimeout(() => {
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    }, 50);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+      observer.disconnect();
+    };
   }, []);
 
   const handleBookClick = (e) => {
@@ -80,7 +100,40 @@ export default function Home() {
       </Head>
 
       <style jsx>{`
-        .page { min-height: 100vh; }
+        .page {
+          min-height: 100vh;
+          background: linear-gradient(
+            135deg,
+            #fff5f8,
+            #fdeef5,
+            #fff0fa,
+            #fdf5ee,
+            #fff5f8
+          );
+          background-size: 400% 400%;
+          animation: gradientShift 14s ease infinite;
+        }
+        @keyframes gradientShift {
+          0%   { background-position: 0% 50%; }
+          25%  { background-position: 100% 50%; }
+          50%  { background-position: 100% 0%; }
+          75%  { background-position: 0% 100%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* ── SCROLL REVEAL ── */
+        .reveal {
+          opacity: 0;
+          transform: translateY(36px);
+          transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
+        }
+        .reveal.revealed {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .reveal-delay-1 { transition-delay: 0.1s; }
+        .reveal-delay-2 { transition-delay: 0.2s; }
+        .reveal-delay-3 { transition-delay: 0.3s; }
 
         /* ── HEADER ── */
         header {
@@ -520,11 +573,11 @@ export default function Home() {
 
         {/* ── ABOUT ── */}
         <section id="about">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>About</h2>
             <div className="section-divider" />
           </div>
-          <div className="about-box">
+          <div className="about-box reveal reveal-delay-1">
             <p>Здрасти, аз съм Павлина! Страстен маникюрист, специализиран в модерни, стилни и уникални дизайни на нокти.</p>
             <div className="surprise-box">
               <h3>☕🍫 Ако решиш да ме изненадаш...</h3>
@@ -535,11 +588,11 @@ export default function Home() {
 
         {/* ── LATE POLICY ── */}
         <section id="policy">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>⏰ Late Policy</h2>
             <div className="section-divider" />
           </div>
-          <div className="policy-box">
+          <div className="policy-box reveal reveal-delay-1">
             <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
             <ul>
               <li><strong>15 минути закъснение</strong> → доплащане 5€</li>
@@ -552,11 +605,11 @@ export default function Home() {
 
         {/* ── GALLERY ── */}
         <section id="gallery">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>Gallery</h2>
             <div className="section-divider" />
           </div>
-          <div className="gallery-3d-wrap">
+          <div className="gallery-3d-wrap reveal reveal-delay-1">
             <CircularGallery
               items={GALLERY_PREVIEW}
               bend={1}
@@ -573,13 +626,13 @@ export default function Home() {
 
         {/* ── REVIEWS ── */}
         <section id="reviews">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>Reviews</h2>
             <div className="section-divider" />
           </div>
           <div className="reviews-grid">
             {REVIEWS.map((r, i) => (
-              <div key={i} className="review-card">
+              <div key={i} className={`review-card reveal reveal-delay-${i + 1}`}>
                 <p>"{r.text}"</p>
                 <div className="review-footer">
                   <span className="stars">★★★★★</span>
@@ -592,20 +645,20 @@ export default function Home() {
 
         {/* ── TIPS ── */}
         <section id="tips">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>🌸 Self-Care Tips</h2>
             <div className="section-divider" />
           </div>
           <ul className="tips-list">
             {TIPS.map((tip, i) => (
-              <li key={i} className="tip-item">{tip}</li>
+              <li key={i} className={`tip-item reveal reveal-delay-${(i % 3) + 1}`}>{tip}</li>
             ))}
           </ul>
         </section>
 
         {/* ── CONTACT ── */}
         <section id="contact">
-          <div className="section-title-wrap">
+          <div className="section-title-wrap reveal">
             <h2>Contact</h2>
             <div className="section-divider" />
           </div>
