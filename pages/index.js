@@ -595,7 +595,7 @@ export default function Home() {
           <div className="policy-box reveal reveal-delay-1">
             <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
             <ul>
-              <li><strong>15 минути закъснение</strong> → доплащане 5€</li>
+              <li><strong>10 минути закъснение</strong> → доплащане 5€</li>
               <li><strong>20 минути+</strong> → часът се <u>отменя</u> без възстановяване</li>
               <li><strong>3 пъти закъснение</strong> → клиентът <u>повече не се записва</u></li>
             </ul>
