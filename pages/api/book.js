@@ -104,7 +104,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  // ── DELETE: cancel booking ────────────────────────────────
+
   if (req.method === "DELETE") {
     try {
       const { id } = req.query;
