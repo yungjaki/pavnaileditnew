@@ -51,6 +51,16 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: "Missing required fields" });
         }
 
+        // Enforce 3-day advance booking
+        const [bd, bm, by] = date.split(".").map(Number);
+        const bookingDate = new Date(by, bm - 1, bd);
+        const earliest = new Date();
+        earliest.setHours(0, 0, 0, 0);
+        earliest.setDate(earliest.getDate() + 3);
+        if (bookingDate < earliest) {
+          return res.status(400).json({ error: "Трябва да запазите час поне 3 дни предварително" });
+        }
+
         // Upload design image to Cloudinary if provided
         let designUrl = "";
         if (files.design?.[0]) {

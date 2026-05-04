@@ -10,7 +10,7 @@ const SERVICES = [
   { name: "Изграждане",        price: 28,                icon: "🔨" },
   { name: "1 нокът",           price: 1.50, countable: true, max: 5, icon: "☝️" },
   { name: "Френски",           price: 2,                 icon: "🤍" },
-  { name: "Камъни",            price: 0.2,               icon: "💎" },
+  { name: "Камъни",            price: 0.2, countable: true, max: 500, icon: "💎" },
   { name: "Стикери",           price: 1,                 icon: "⭐" },
   { name: "Буква",             price: 1,                 icon: "🔤" },
   { name: "Сребърно/златно",   price: 2,                 icon: "✨" },
@@ -60,6 +60,8 @@ export default function Book() {
   const [waitlistTime, setWaitlistTime] = useState(null); // which slot to join waitlist for
   const [waitlistDone, setWaitlistDone] = useState(false);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [stonePromptOpen, setStonePromptOpen] = useState(false);
+  const [stoneInput, setStoneInput] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
 
@@ -109,9 +111,12 @@ export default function Book() {
           to:   new Date(b.end   + "T00:00:00"),
         }));
 
+        const minBookingDate = new Date();
+        minBookingDate.setDate(minBookingDate.getDate() + 3);
+
         fpInstance.current = flatpickr(flatpickrRef.current, {
           locale: Bulgarian,
-          minDate: "today",
+          minDate: minBookingDate,
           dateFormat: "d.m.Y",
           disableMobile: true,
           disable: [
@@ -188,6 +193,11 @@ export default function Book() {
   };
 
   const toggleService = (svc) => {
+    if (svc.name === "Камъни") {
+      setStoneInput(selected["Камъни"] ? String(selected["Камъни"]) : "");
+      setStonePromptOpen(true);
+      return;
+    }
     setSelected(prev => {
       const current = prev[svc.name];
       if (!current) return { ...prev, [svc.name]: 1 };
@@ -216,6 +226,15 @@ export default function Book() {
     const selectedServices = Object.keys(selected);
     if (!name || !phone || !email || !selectedDate || !selectedTime || selectedServices.length === 0) {
       setError("❌ Моля, попълнете всички задължителни полета.");
+      return;
+    }
+    const [bd, bm, by] = selectedDate.split(".").map(Number);
+    const bookingDate = new Date(by, bm - 1, bd);
+    const earliest = new Date();
+    earliest.setHours(0, 0, 0, 0);
+    earliest.setDate(earliest.getDate() + 3);
+    if (bookingDate < earliest) {
+      setError("❌ Трябва да запазите час поне 3 дни предварително.");
       return;
     }
     setLoading(true);
@@ -563,6 +582,52 @@ export default function Book() {
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .error { color: #e53e3e; font-size: 0.9rem; background: #fff5f5; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 1rem; }
       `}</style>
+
+      {stonePromptOpen && (
+        <div
+          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={() => setStonePromptOpen(false)}
+        >
+          <div
+            style={{background:"#fff",borderRadius:"20px",padding:"2rem",maxWidth:"320px",width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",color:"#3d2535",margin:"0 0 0.4rem"}}>💎 Камъни</h3>
+            <p style={{fontSize:"0.85rem",color:"#b8a898",margin:"0 0 1rem"}}>Колко камъни желаеш? (0.20€ / бр.)</p>
+            <input
+              type="number"
+              min="1"
+              max="500"
+              value={stoneInput}
+              onChange={e => setStoneInput(e.target.value)}
+              placeholder="напр. 5"
+              autoFocus
+              style={{width:"100%",padding:"0.75rem 1rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.4)",fontSize:"1rem",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  const qty = parseInt(stoneInput);
+                  if (qty > 0) { setSelected(prev => ({...prev, "Камъни": qty})); setStonePromptOpen(false); }
+                }
+                if (e.key === "Escape") setStonePromptOpen(false);
+              }}
+            />
+            <div style={{display:"flex",gap:"0.75rem",marginTop:"1rem"}}>
+              <button type="button" onClick={() => {
+                setSelected(prev => { const n = {...prev}; delete n["Камъни"]; return n; });
+                setStonePromptOpen(false);
+              }} style={{flex:1,padding:"0.75rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.3)",background:"#fff",color:"#b8a898",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                Премахни
+              </button>
+              <button type="button" onClick={() => {
+                const qty = parseInt(stoneInput);
+                if (qty > 0) { setSelected(prev => ({...prev, "Камъни": qty})); setStonePromptOpen(false); }
+              }} style={{flex:1,padding:"0.75rem",borderRadius:"12px",border:"none",background:"linear-gradient(135deg,#f8b7d1,#ff6ec4)",color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                Потвърди
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="page">
         <div style={{maxWidth: '620px', margin: '0 auto'}}>
