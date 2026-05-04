@@ -64,37 +64,59 @@ export default function Book() {
   const [stoneInput, setStoneInput] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
+  const bookingsRef = useRef([]);
+  const breaksRef = useRef([]);
 
   useEffect(() => {
-    const id = localStorage.getItem("pavBooking");
-    const date = localStorage.getItem("pavBookingDate");
-    const time = localStorage.getItem("pavBookingTime");
-    if (id && date && time) {
-      const [d, m, y] = date.split(".");
-      const [hh, mm] = time.split(":");
-      const bookingDate = new Date(y, m - 1, d, hh, mm);
-      if (new Date() < bookingDate) {
-        window.location.href = "/already-booked";
-        return;
-      } else {
-        localStorage.removeItem("pavBooking");
-        localStorage.removeItem("pavBookingDate");
-        localStorage.removeItem("pavBookingTime");
+    // Migrate legacy single-booking keys into the array format
+    const legacyId   = localStorage.getItem("pavBooking");
+    const legacyDate = localStorage.getItem("pavBookingDate");
+    const legacyTime = localStorage.getItem("pavBookingTime");
+    if (legacyId && legacyDate && legacyTime) {
+      const existing = JSON.parse(localStorage.getItem("pavBookings") || "[]");
+      if (!existing.find(b => b.id === legacyId)) {
+        existing.push({ id: legacyId, date: legacyDate, time: legacyTime });
+        localStorage.setItem("pavBookings", JSON.stringify(existing));
       }
+      localStorage.removeItem("pavBooking");
+      localStorage.removeItem("pavBookingDate");
+      localStorage.removeItem("pavBookingTime");
+    }
+
+    // Drop past bookings and warn if at the 3-booking limit
+    const now = new Date();
+    let arr = JSON.parse(localStorage.getItem("pavBookings") || "[]");
+    arr = arr.filter(b => {
+      const [d, m, y] = b.date.split(".");
+      const [hh, mm] = b.time.split(":");
+      return new Date(y, m - 1, d, hh, mm) > now;
+    });
+    localStorage.setItem("pavBookings", JSON.stringify(arr));
+    if (arr.length >= 3) {
+      setError("❌ Вече имаш 3 запазени часа напред. Можеш да запазиш нов след като мине някой от тях.");
     }
   }, []);
 
   useEffect(() => {
     fetch("/api/book")
       .then(r => r.json())
-      .then(data => setBookings(data.bookings || []))
+      .then(data => {
+        const b = data.bookings || [];
+        setBookings(b);
+        bookingsRef.current = b;
+        fpInstance.current?.redraw?.();
+      })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     fetch("/api/admin/breaks")
       .then(r => r.json())
-      .then(data => setBreaks(data.breaks || []))
+      .then(data => {
+        const b = data.breaks || [];
+        setBreaks(b);
+        breaksRef.current = b;
+      })
       .catch(console.error);
   }, []);
 
@@ -131,6 +153,50 @@ export default function Book() {
             setSelectedDate(`${d}.${m}.${y}`);
             setSelectedTime("");
           },
+          onDayCreate: (_dObj, _dStr, _fp, dayElem) => {
+            const date = dayElem.dateObj;
+            if (!date) return;
+            const dow = date.getDay();
+            if (dow === 2) return; // Tuesday — already disabled
+
+            const dd = date.getDate().toString().padStart(2, "0");
+            const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+            const yy = date.getFullYear();
+            const dateStr = `${dd}.${mm}.${yy}`;
+
+            // Skip break ranges
+            const inBreak = breaksRef.current.some(b => {
+              const from = new Date(b.start + "T00:00:00");
+              const to   = new Date(b.end   + "T00:00:00");
+              return date >= from && date <= to;
+            });
+            if (inBreak) return;
+
+            const isWeekendDay = dow === 0 || dow === 6;
+            const isHolidayDay = HOLIDAYS.includes(dateStr);
+
+            // Mirror the slot logic from getAvailableTimes
+            let slots;
+            if (isWeekendDay) {
+              slots = ["14:00", "16:30"]; // 10:00 hidden on weekends
+            } else if (isHolidayDay) {
+              slots = ["10:00", "14:00", "16:30"];
+            } else {
+              slots = ["10:00"];
+            }
+
+            const bookedOnDay = bookingsRef.current
+              .filter(b => b.date === dateStr)
+              .map(b => b.time);
+            const bookedCount = slots.filter(t => bookedOnDay.includes(t)).length;
+
+            if (bookedCount === 0) return;
+            if (bookedCount >= slots.length) {
+              dayElem.classList.add("day-full");
+            } else {
+              dayElem.classList.add("day-partial");
+            }
+          },
         });
       });
     });
@@ -139,11 +205,21 @@ export default function Book() {
 
   const getBookedTimes = (date) => bookings.filter(b => b.date === date).map(b => b.time);
 
+  const isWeekend = (dateStr) => {
+    const [d, m, y] = dateStr.split(".").map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    return day === 0 || day === 6;
+  };
+
   const getAvailableTimes = () => {
     if (!selectedDate) return [];
     const bookedTimes = getBookedTimes(selectedDate);
     if (isWeekendOrHoliday(selectedDate)) {
-      return TIMES.map(t => ({ time: t, available: !bookedTimes.includes(t) }));
+      return TIMES.map(t => ({
+        time: t,
+        available: !bookedTimes.includes(t),
+        hidden: isWeekend(selectedDate) && t === "10:00",
+      }));
     }
     return TIMES.map(t => ({
       time: t,
@@ -223,6 +299,16 @@ export default function Book() {
 
   const handleSubmit = async () => {
     setError("");
+    const now = new Date();
+    let activeBookings = JSON.parse(localStorage.getItem("pavBookings") || "[]").filter(b => {
+      const [d, m, y] = b.date.split(".");
+      const [hh, mm] = b.time.split(":");
+      return new Date(y, m - 1, d, hh, mm) > now;
+    });
+    if (activeBookings.length >= 3) {
+      setError("❌ Вече имаш 3 запазени часа напред. Можеш да запазиш нов след като мине някой от тях.");
+      return;
+    }
     const selectedServices = Object.keys(selected);
     if (!name || !phone || !email || !selectedDate || !selectedTime || selectedServices.length === 0) {
       setError("❌ Моля, попълнете всички задължителни полета.");
@@ -259,14 +345,13 @@ export default function Book() {
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
-      localStorage.setItem("pavBooking", data.id);
-      localStorage.setItem("pavBookingDate", selectedDate);
-      localStorage.setItem("pavBookingTime", selectedTime);
+      activeBookings.push({ id: data.id, date: selectedDate, time: selectedTime });
+      localStorage.setItem("pavBookings", JSON.stringify(activeBookings));
       localStorage.setItem("pavBookingPhone", phone);
       if (data.stamps) localStorage.setItem("pavStamps", JSON.stringify(data.stamps));
       window.location.href = "/already-booked?success=true";
     } else if (data?.error === "ALREADY_BOOKED") {
-      window.location.href = "/already-booked";
+      setError("❌ Този час вече е зает. Моля, избери друг.");
     } else {
       setError(`❌ ${data.error || "Грешка при запазването"}`);
     }
@@ -544,6 +629,25 @@ export default function Book() {
       <Head>
         <title>Book Now – PavNailedIt</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+        <style>{`
+          .flatpickr-day.day-full {
+            background: #e8e8e8 !important;
+            color: #bbb !important;
+            text-decoration: line-through;
+            border-color: transparent !important;
+          }
+          .flatpickr-day.day-full:hover {
+            background: #ddd !important;
+            color: #999 !important;
+          }
+          .flatpickr-day.day-partial {
+            background: linear-gradient(135deg, #efefef 50%, #fff0f6 50%) !important;
+            border-color: rgba(249,161,194,0.35) !important;
+          }
+          .flatpickr-day.day-partial:hover {
+            background: linear-gradient(135deg, #e4e4e4 50%, #ffe4f2 50%) !important;
+          }
+        `}</style>
       </Head>
 
       <style jsx>{`
