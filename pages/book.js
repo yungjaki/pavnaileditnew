@@ -64,8 +64,6 @@ export default function Book() {
   const [stoneInput, setStoneInput] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
-  const bookingsRef = useRef([]);
-  const breaksRef = useRef([]);
 
   useEffect(() => {
     // Migrate legacy single-booking keys into the array format
@@ -100,23 +98,14 @@ export default function Book() {
   useEffect(() => {
     fetch("/api/book")
       .then(r => r.json())
-      .then(data => {
-        const b = data.bookings || [];
-        setBookings(b);
-        bookingsRef.current = b;
-        fpInstance.current?.redraw?.();
-      })
+      .then(data => setBookings(data.bookings || []))
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     fetch("/api/admin/breaks")
       .then(r => r.json())
-      .then(data => {
-        const b = data.breaks || [];
-        setBreaks(b);
-        breaksRef.current = b;
-      })
+      .then(data => setBreaks(data.breaks || []))
       .catch(console.error);
   }, []);
 
@@ -127,7 +116,6 @@ export default function Book() {
       import("flatpickr/dist/l10n/bg.js").then(({ Bulgarian }) => {
         fpInstance.current?.destroy();
 
-        // Convert break date strings to Date objects for flatpickr
         const disabledRanges = breaks.map(b => ({
           from: new Date(b.start + "T00:00:00"),
           to:   new Date(b.end   + "T00:00:00"),
@@ -136,13 +124,38 @@ export default function Book() {
         const minBookingDate = new Date();
         minBookingDate.setDate(minBookingDate.getDate() + 3);
 
+        // Build a set of fully-booked date strings to disable
+        const getSlotsForDate = (date) => {
+          const dow = date.getDay();
+          const dd = date.getDate().toString().padStart(2, "0");
+          const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+          const yy = date.getFullYear();
+          const dateStr = `${dd}.${mm}.${yy}`;
+          const isWeekendDay = dow === 0 || dow === 6;
+          const isHolidayDay = HOLIDAYS.includes(dateStr);
+          if (isWeekendDay) return ["14:00", "16:30"];
+          if (isHolidayDay) return ["10:00", "14:00", "16:30"];
+          return ["10:00"];
+        };
+
+        const isFullyBooked = (date) => {
+          const dd = date.getDate().toString().padStart(2, "0");
+          const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+          const yy = date.getFullYear();
+          const dateStr = `${dd}.${mm}.${yy}`;
+          const slots = getSlotsForDate(date);
+          const bookedTimes = bookings.filter(b => b.date === dateStr).map(b => b.time);
+          return slots.every(t => bookedTimes.includes(t));
+        };
+
         fpInstance.current = flatpickr(flatpickrRef.current, {
           locale: Bulgarian,
           minDate: minBookingDate,
           dateFormat: "d.m.Y",
           disableMobile: true,
           disable: [
-            (d) => d.getDay() === 2, // Tuesday
+            (d) => d.getDay() === 2,  // Tuesday
+            (d) => isFullyBooked(d),  // fully booked days
             ...disabledRanges,
           ],
           onChange: ([date]) => {
@@ -157,43 +170,25 @@ export default function Book() {
             const date = dayElem.dateObj;
             if (!date) return;
             const dow = date.getDay();
-            if (dow === 2) return; // Tuesday — already disabled
+            if (dow === 2) return;
 
             const dd = date.getDate().toString().padStart(2, "0");
             const mm = (date.getMonth() + 1).toString().padStart(2, "0");
             const yy = date.getFullYear();
             const dateStr = `${dd}.${mm}.${yy}`;
 
-            // Skip break ranges
-            const inBreak = breaksRef.current.some(b => {
+            const inBreak = breaks.some(b => {
               const from = new Date(b.start + "T00:00:00");
               const to   = new Date(b.end   + "T00:00:00");
               return date >= from && date <= to;
             });
             if (inBreak) return;
 
-            const isWeekendDay = dow === 0 || dow === 6;
-            const isHolidayDay = HOLIDAYS.includes(dateStr);
+            const slots = getSlotsForDate(date);
+            const bookedTimes = bookings.filter(b => b.date === dateStr).map(b => b.time);
+            const bookedCount = slots.filter(t => bookedTimes.includes(t)).length;
 
-            // Mirror the slot logic from getAvailableTimes
-            let slots;
-            if (isWeekendDay) {
-              slots = ["14:00", "16:30"]; // 10:00 hidden on weekends
-            } else if (isHolidayDay) {
-              slots = ["10:00", "14:00", "16:30"];
-            } else {
-              slots = ["10:00"];
-            }
-
-            const bookedOnDay = bookingsRef.current
-              .filter(b => b.date === dateStr)
-              .map(b => b.time);
-            const bookedCount = slots.filter(t => bookedOnDay.includes(t)).length;
-
-            if (bookedCount === 0) return;
-            if (bookedCount >= slots.length) {
-              dayElem.classList.add("day-full");
-            } else {
+            if (bookedCount > 0 && bookedCount < slots.length) {
               dayElem.classList.add("day-partial");
             }
           },
@@ -201,7 +196,7 @@ export default function Book() {
       });
     });
     return () => fpInstance.current?.destroy();
-  }, [breaks]);
+  }, [breaks, bookings]);
 
   const getBookedTimes = (date) => bookings.filter(b => b.date === date).map(b => b.time);
 
@@ -630,16 +625,6 @@ export default function Book() {
         <title>Book Now – PavNailedIt</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
         <style>{`
-          .flatpickr-day.day-full {
-            background: #e8e8e8 !important;
-            color: #bbb !important;
-            text-decoration: line-through;
-            border-color: transparent !important;
-          }
-          .flatpickr-day.day-full:hover {
-            background: #ddd !important;
-            color: #999 !important;
-          }
           .flatpickr-day.day-partial {
             background: linear-gradient(135deg, #efefef 50%, #fff0f6 50%) !important;
             border-color: rgba(249,161,194,0.35) !important;
