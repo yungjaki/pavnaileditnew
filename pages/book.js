@@ -57,6 +57,8 @@ function getSlotsForDate(date) {
   const dow = date.getDay();
   if (dow === 0 || dow === 6) return ["14:00", "16:30"];              // уикенд
   if (HOLIDAYS.includes(toDateStr(date))) return ["10:00", "14:00", "16:30"]; // празник
+  // Ноември 2026 (без 30-ти): делник само 10:00
+  if (date.getFullYear() === 2026 && date.getMonth() === 10 && date.getDate() !== 30) return ["10:00"];
   return ["16:30"];                                                    // делник (училище до 13-14)
 }
 
