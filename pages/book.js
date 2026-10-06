@@ -32,11 +32,37 @@ const TIMES = ["10:00", "14:00", "16:30"];
 const HOLIDAYS = ["01.01.2025","03.03.2025","01.05.2025","06.05.2025","24.05.2025","06.09.2025","22.09.2025","24.12.2026","25.12.2026","26.12.2026"];
 const BREAKS = [{ start: "20.12.2026", end: "25.12.2026" }];
 
-function isWeekendOrHoliday(dateStr) {
+// Конкретни дати, в които не работя
+const BLOCKED_DATES = ["17.10.2026","18.10.2026","31.10.2026","01.11.2026","11.11.2026","18.11.2026"];
+
+const toDateStr = (date) => {
+  const dd = date.getDate().toString().padStart(2, "0");
+  const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+  return `${dd}.${mm}.${date.getFullYear()}`;
+};
+
+// true = денят е затворен за записване
+function isDateBlocked(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth(); // 0 = януари, 9 = октомври, 11 = декември
+  const dow = date.getDay(); // 0 = неделя, 1 = понеделник
+  if (BLOCKED_DATES.includes(toDateStr(date))) return true;
+  if (y === 2026 && m === 9) return true;                 // целият октомври 2026
+  if (y === 2026 && m === 11 && dow === 1) return true;   // всеки понеделник в декември 2026
+  return false;
+}
+
+// Кои часове има за даден ден
+function getSlotsForDate(date) {
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return ["14:00", "16:30"];              // уикенд
+  if (HOLIDAYS.includes(toDateStr(date))) return ["10:00", "14:00", "16:30"]; // празник
+  return ["16:30"];                                                    // делник (училище до 13-14)
+}
+
+function strToDate(dateStr) {
   const [d, m, y] = dateStr.split(".").map(Number);
-  const date = new Date(y, m - 1, d);
-  const day = date.getDay();
-  return day === 0 || day === 6 || HOLIDAYS.includes(dateStr);
+  return new Date(y, m - 1, d);
 }
 
 export default function Book() {
@@ -124,20 +150,6 @@ export default function Book() {
         const minBookingDate = new Date();
         minBookingDate.setDate(minBookingDate.getDate() + 3);
 
-        // Build a set of fully-booked date strings to disable
-        const getSlotsForDate = (date) => {
-          const dow = date.getDay();
-          const dd = date.getDate().toString().padStart(2, "0");
-          const mm = (date.getMonth() + 1).toString().padStart(2, "0");
-          const yy = date.getFullYear();
-          const dateStr = `${dd}.${mm}.${yy}`;
-          const isWeekendDay = dow === 0 || dow === 6;
-          const isHolidayDay = HOLIDAYS.includes(dateStr);
-          if (isWeekendDay) return ["14:00", "16:30"];
-          if (isHolidayDay) return ["10:00", "14:00", "16:30"];
-          return ["10:00"];
-        };
-
         const isFullyBooked = (date) => {
           const dd = date.getDate().toString().padStart(2, "0");
           const mm = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -154,7 +166,7 @@ export default function Book() {
           dateFormat: "d.m.Y",
           disableMobile: true,
           disable: [
-            (d) => d.getDay() === 2,  // Tuesday
+            (d) => isDateBlocked(d),  // блокирани дати
             (d) => isFullyBooked(d),  // fully booked days
             ...disabledRanges,
           ],
@@ -169,8 +181,7 @@ export default function Book() {
           onDayCreate: (_dObj, _dStr, _fp, dayElem) => {
             const date = dayElem.dateObj;
             if (!date) return;
-            const dow = date.getDay();
-            if (dow === 2) return;
+            if (isDateBlocked(date)) return;
 
             const dd = date.getDate().toString().padStart(2, "0");
             const mm = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -200,26 +211,14 @@ export default function Book() {
 
   const getBookedTimes = (date) => bookings.filter(b => b.date === date).map(b => b.time);
 
-  const isWeekend = (dateStr) => {
-    const [d, m, y] = dateStr.split(".").map(Number);
-    const day = new Date(y, m - 1, d).getDay();
-    return day === 0 || day === 6;
-  };
-
   const getAvailableTimes = () => {
     if (!selectedDate) return [];
     const bookedTimes = getBookedTimes(selectedDate);
-    if (isWeekendOrHoliday(selectedDate)) {
-      return TIMES.map(t => ({
-        time: t,
-        available: !bookedTimes.includes(t),
-        hidden: isWeekend(selectedDate) && t === "10:00",
-      }));
-    }
+    const slots = getSlotsForDate(strToDate(selectedDate));
     return TIMES.map(t => ({
       time: t,
-      available: t === "10:00" && !bookedTimes.includes(t),
-      hidden: t !== "10:00",
+      available: slots.includes(t) && !bookedTimes.includes(t),
+      hidden: !slots.includes(t),
     }));
   };
 
