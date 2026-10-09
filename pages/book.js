@@ -7,7 +7,7 @@ import InspoGallery from "../components/InspoGallery";
 const SERVICES = [
   { name: "Гел - къси нокти",  price: 18,                icon: "💅" },
   { name: "Гел - дълги нокти", price: 20,                icon: "💅" },
-  { name: "Изграждане",        price: 28,                icon: "🔨" },
+  { name: "Изграждане",        price: 35,                icon: "🔨" },
   { name: "1 нокът",           price: 1.50, countable: true, max: 5, icon: "☝️" },
   { name: "Френски",           price: 2,                 icon: "🤍" },
   { name: "Камъни",            price: 0.2, countable: true, max: 500, icon: "💎" },
