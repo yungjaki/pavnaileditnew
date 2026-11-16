@@ -3,7 +3,7 @@ import Link from "next/link";
 
 const TIPS = [
   {
-    icon: "💧",
+    icon: "icons/water-drop",
     time: "Първите 2 часа",
     title: "Без вода",
     desc: "Избягвай да мокриш ноктите поне 2 часа след процедурата. Гелът продължава да се втвърдява и водата може да наруши адхезията.",
@@ -11,7 +11,7 @@ const TIPS = [
     accent: "#5ba3d9",
   },
   {
-    icon: "🧴",
+    icon: "icons/cuticle-oil",
     time: "Ежедневно",
     title: "Хидратирай кутикулите",
     desc: "Нанасяй масло за кутикули всяка вечер. Хидратираните кутикули = по-дълготрайни нокти. Препоръчваме масло с витамин Е или бадемово масло.",
@@ -19,7 +19,7 @@ const TIPS = [
     accent: "#d4924a",
   },
   {
-    icon: "🧤",
+    icon: "icons/gloves",
     time: "При почистване",
     title: "Защити ноктите",
     desc: "Носи ръкавици при работа с препарати за почистване, съдомиялна или химикали. Агресивните вещества съкращават живота на гела значително.",
@@ -27,7 +27,7 @@ const TIPS = [
     accent: "#4a9d6f",
   },
   {
-    icon: "✋",
+    icon: "icons/manicured-hand",
     time: "Винаги",
     title: "Без отчупване",
     desc: "Не използвай ноктите за отваряне на кутии, скрепване и подобни. Натискът под ъгъл е причина №1 за отчупване. Използвай подложката на пръста.",
@@ -35,7 +35,7 @@ const TIPS = [
     accent: "#c94090",
   },
   {
-    icon: "☀️",
+    icon: "falling/sun",
     time: "На слънце",
     title: "Слънцезащита",
     desc: "UV лъчите избледняват цветовете с времето. При продължително излагане на слънце, нанеси слънцезащитен крем и върху ръцете.",
@@ -43,7 +43,7 @@ const TIPS = [
     accent: "#d4a017",
   },
   {
-    icon: "🪮",
+    icon: "icons/nail-file",
     time: "При проблем",
     title: "Не сваляй сама",
     desc: "Ако се наруши нокът или гелът се повдигне — не го дърпай! Свали се при специалист. Само така запазваш естествения нокът без увреждания.",
@@ -117,7 +117,7 @@ export default function Aftercare() {
         }
         .ac-back:hover { color: #5c3d2e; }
         .ac-hero-icon {
-          font-size: 3rem; display: block; margin-bottom: 1rem;
+          width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 1rem;
           animation: floatIcon 3s ease-in-out infinite;
           position: relative; z-index: 1;
         }
@@ -180,7 +180,7 @@ export default function Aftercare() {
           margin-bottom: 8px;
         }
         .tip-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .tip-icon { font-size: 1.6rem; flex-shrink: 0; }
+        .tip-icon { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
         .tip-title { font-size: 1rem; font-weight: 700; color: #4a3228; }
         .tip-desc { font-size: 0.85rem; color: #7a6050; line-height: 1.65; }
 
@@ -261,7 +261,7 @@ export default function Aftercare() {
         {/* Hero */}
         <div className="ac-hero">
           <Link href="/" className="ac-back">← Към началото</Link>
-          <span className="ac-hero-icon">💅</span>
+          <img className="ac-hero-icon" src="/art/icons/manicured-hand.webp" alt="" width="72" height="72" />
           <h1>Грижа за твоите<br /><em>нокти</em></h1>
           <p className="ac-hero-sub">
             Следвай тези съвети и гел маникюрът ти ще издържи максимално дълго — красив и непокътнат.
@@ -277,7 +277,7 @@ export default function Aftercare() {
               <div key={i} className="tip-card" style={{ background: tip.color }}>
                 <div className="tip-time" style={{ color: tip.accent }}>{tip.time}</div>
                 <div className="tip-header">
-                  <span className="tip-icon">{tip.icon}</span>
+                  <img className="tip-icon" src={`/art/${tip.icon}.webp`} alt="" width="44" height="44" loading="lazy" decoding="async" />
                   <span className="tip-title">{tip.title}</span>
                 </div>
                 <p className="tip-desc">{tip.desc}</p>

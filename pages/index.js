@@ -22,11 +22,11 @@ const REVIEWS = [
 ];
 
 const TIPS = [
-  "💧 Пий поне 2 литра вода на ден – хидратацията прави ноктите здрави.",
-  "🌙 Нанасяй масло за кутикули вечер преди сън.",
-  "🥦 Яж храни богати на биотин (яйца, бадеми, броколи) за по-здрави нокти.",
-  "🧴 Използвай ръкавици при почистване – препаратите изсушават ноктите.",
-  "💅 Давай почивка между гел маникюри за възстановяване на плочката.",
+  { icon: "water-drop", text: "Пий поне 2 литра вода на ден – хидратацията прави ноктите здрави." },
+  { icon: "moon", text: "Нанасяй масло за кутикули вечер преди сън." },
+  { icon: "greens", text: "Яж храни богати на биотин (яйца, бадеми, броколи) за по-здрави нокти." },
+  { icon: "gloves", text: "Използвай ръкавици при почистване – препаратите изсушават ноктите." },
+  { icon: "manicured-hand", text: "Давай почивка между гел маникюри за възстановяване на плочката." },
 ];
 
 const PHONE_DISPLAY = "+359 87 693 0230";
@@ -105,7 +105,7 @@ export default function Home() {
         <meta name="description" content="Модерен гел маникюр и уникален nail art в Пловдив. Разгледай галерията и запази час онлайн за минута." />
         <meta property="og:title" content="PavNailedIt – маникюр в Пловдив" />
         <meta property="og:description" content="Модерен гел маникюр и уникален nail art. Запази час онлайн." />
-        <meta property="og:image" content="https://pavnailed.it/nails/2/nail1.jpg" />
+        <meta property="og:image" content="https://pavnailed.it/nails/3/nail3.jpg" />
         <meta property="og:url" content="https://pavnailed.it/" />
         <link rel="canonical" href="https://pavnailed.it/" />
       </Head>
@@ -241,7 +241,11 @@ export default function Home() {
 
         .tips-list { list-style: none; display: grid; gap: 1rem; padding: 0; }
         @media (min-width: 600px) { .tips-list { grid-template-columns: repeat(2, 1fr); } }
-        .tip-item { background: #fff; border-radius: 15px; padding: 1.2rem 1.5rem; font-size: 1rem; color: var(--text-mid); box-shadow: 0 4px 15px rgba(249,161,194,0.1); border: 1px solid rgba(249,161,194,0.12); }
+        .tip-item { display: flex; align-items: center; gap: 1rem; background: #fff; border-radius: 15px; padding: 1.1rem 1.4rem; font-size: 1rem; color: var(--text-mid); box-shadow: 0 4px 15px rgba(249,161,194,0.1); border: 1px solid rgba(249,161,194,0.12); }
+        .art-icon { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+        .art-inline { width: 28px; height: 28px; object-fit: contain; vertical-align: -7px; margin: 0 0.15rem; }
+        .with-icon .art-inline { margin-right: 0.35rem; }
+        .contact-art { display: block; width: 72px; height: 72px; object-fit: contain; margin: -1rem auto 1.5rem; }
 
         .contact-lead { text-align: center; color: var(--text-mid); margin: 0 auto 2rem; max-width: 50ch; font-size: 1.05rem; }
         .contact-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
@@ -322,7 +326,7 @@ export default function Home() {
                 <div className="hero-photo-inner">
                   <Image
                     src={heroImg}
-                    alt="Нежен розов маникюр с черен контур на бадемовидни нокти"
+                    alt="Бадемовидни нокти с жълт френски маникюр и розови 3D цветя"
                     fill
                     priority
                     placeholder="blur"
@@ -343,7 +347,11 @@ export default function Home() {
             <div className="about-box reveal reveal-delay-1">
               <p>Здрасти, аз съм Павлина! Страстен маникюрист, специализиран в модерни, стилни и уникални дизайни на нокти.</p>
               <div className="surprise-box">
-                <h3>Ако решиш да ме изненадаш... ☕🍫</h3>
+                <h3>
+                  Ако решиш да ме изненадаш...
+                  <img className="art-inline" src="/art/icons/coffee.webp" alt="" width="28" height="28" loading="lazy" />
+                  <img className="art-inline" src="/art/icons/chocolate.webp" alt="" width="28" height="28" loading="lazy" />
+                </h3>
                 <p>Обожавам топло <strong>Pumpkin Spice Latte</strong> или <strong>Red Redbull</strong> и понякога нещо сладичко като <strong>черен шоколад</strong>. 💖</p>
               </div>
             </div>
@@ -355,13 +363,13 @@ export default function Home() {
               <div className="section-divider" />
             </div>
             <div className="policy-box reveal reveal-delay-1">
-              <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
+              <p className="with-icon"><img className="art-inline" src="/art/icons/heart-badge.webp" alt="" width="28" height="28" loading="lazy" /> Обичам да ти подарявам 100% от вниманието си – затова:</p>
               <ul>
                 <li><strong>10 минути закъснение</strong> → доплащане 5€</li>
                 <li><strong>20 минути+</strong> → часът се <u>отменя</u> без възстановяване</li>
                 <li><strong>3 пъти закъснение</strong> → клиентът <u>повече не се записва</u></li>
               </ul>
-              <p style={{ marginTop: "1rem" }}>⚠️ Моля те, бъди точна – това е уважение към времето ми и към другите клиенти 💖</p>
+              <p className="with-icon" style={{ marginTop: "1rem" }}><img className="art-inline" src="/art/icons/clock.webp" alt="" width="28" height="28" loading="lazy" /> Моля те, бъди точна – това е уважение към времето ми и към другите клиенти 💖</p>
             </div>
           </section>
 
@@ -403,7 +411,10 @@ export default function Home() {
             </div>
             <ul className="tips-list">
               {TIPS.map((tip, i) => (
-                <li key={i} className={`tip-item reveal reveal-delay-${(i % 3) + 1}`}>{tip}</li>
+                <li key={i} className={`tip-item reveal reveal-delay-${(i % 3) + 1}`}>
+                  <img className="art-icon" src={`/art/icons/${tip.icon}.webp`} alt="" width="40" height="40" loading="lazy" decoding="async" />
+                  <span>{tip.text}</span>
+                </li>
               ))}
             </ul>
           </section>
@@ -413,7 +424,8 @@ export default function Home() {
               <h2>Контакт</h2>
               <div className="section-divider" />
             </div>
-            <p className="contact-lead">Имаш въпрос? Обади ми се или ми пиши в Instagram — отговарям възможно най-бързо. 💌</p>
+            <p className="contact-lead">Имаш въпрос? Обади ми се или ми пиши в Instagram — отговарям възможно най-бързо.</p>
+            <img className="contact-art" src="/art/icons/love-letter.webp" alt="" width="72" height="72" loading="lazy" />
             <div className="contact-actions">
               <a className="contact-btn primary" href={PHONE_LINK}>Обади се: {PHONE_DISPLAY}</a>
               <a className="contact-btn secondary" href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">Instagram @pav.nailed.it</a>

@@ -1,18 +1,19 @@
 import { useEffect } from "react";
 
+// Illustrations live in /public/art/falling/<name>.webp
 const THEMES = {
-  newYear:    ["🎆", "🎇", "🥂", "🎉"],
-  halloween:  ["🎃", "👻", "🕸️"],
-  christmas:  ["🎄", "🎅", "❄️", "🎁"],
-  valentines: ["❤️", "💘", "💝"],
-  easter:     ["🥚", "🐰", "🌸"],
-  womensDay:  ["🌹", "💐", "👩‍🦰"],
-  birthday:   ["🎂", "🎉", "🥂"],
-  nameDay:    ["🌸", "🌹", "✨", "🎉"],
-  autumn:     ["🍂", "🍁"],
-  winter:     ["❄️"],
-  spring:     ["🌸", "🌷"],
-  summer:     ["☀️", "🌴", "🍉"],
+  newYear:    ["firework", "champagne", "confetti", "sparkle"],
+  halloween:  ["pumpkin", "ghost", "spiderweb"],
+  christmas:  ["xmas-tree", "santa-hat", "snowflake", "gift"],
+  valentines: ["heart", "heart-arrow", "rose"],
+  easter:     ["easter-egg", "bunny", "blossom"],
+  womensDay:  ["rose", "bouquet", "tulip"],
+  birthday:   ["cake", "confetti", "champagne"],
+  nameDay:    ["blossom", "rose", "sparkle", "confetti"],
+  autumn:     ["maple-leaf", "oak-leaf"],
+  winter:     ["snowflake"],
+  spring:     ["blossom", "petal", "tulip"],
+  summer:     ["sun", "palm-leaf", "watermelon"],
 };
 
 function getTheme() {
@@ -44,13 +45,18 @@ export default function FallingElements() {
     const create = () => {
       if (document.hidden) return;
       if (document.querySelectorAll(".fall-element").length >= MAX) return;
-      const el = document.createElement("div");
+      const el = document.createElement("img");
       el.className = "fall-element";
+      el.alt = "";
       el.setAttribute("aria-hidden", "true");
-      el.textContent = theme[Math.floor(Math.random() * theme.length)];
+      el.decoding = "async";
+      el.src = `/art/falling/${theme[Math.floor(Math.random() * theme.length)]}.webp`;
+      const size = 18 + Math.random() * 20;
+      el.style.width = el.style.height = size + "px";
       el.style.left = Math.random() * 100 + "vw";
-      el.style.fontSize = 12 + Math.random() * 18 + "px";
-      el.style.animationDuration = 4 + Math.random() * 6 + "s";
+      el.style.setProperty("--drift", (Math.random() * 80 - 40).toFixed(0) + "px");
+      el.style.setProperty("--spin", (Math.random() * 360 - 180).toFixed(0) + "deg");
+      el.style.animationDuration = 6 + Math.random() * 6 + "s";
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 12000);
     };
@@ -71,11 +77,17 @@ export default function FallingElements() {
         animation: falling linear forwards;
         z-index: 0;
         user-select: none;
+        object-fit: contain;
+        opacity: 0.9;
+        filter: drop-shadow(0 4px 6px rgba(194, 24, 91, 0.12));
       }
+      /* gentle drift and tumble, like a petal falling */
       @keyframes falling {
-        0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
-        80%  { opacity: 1; }
-        100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+        0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+        10%  { opacity: 0.9; }
+        50%  { transform: translate(var(--drift), 52vh) rotate(calc(var(--spin) / 2)); }
+        85%  { opacity: 0.9; }
+        100% { transform: translate(0, 105vh) rotate(var(--spin)); opacity: 0; }
       }
     `}</style>
   );

@@ -38,7 +38,7 @@ function ServiceChip({ svc, count, disabled, onToggle }) {
       aria-pressed={active}
       title={disabled ? "Не е съвместимо с избраната дължина" : priceLabel}
     >
-      {svc.icon && <span className="chip-icon" aria-hidden="true">{svc.icon}</span>}
+      {svc.art && <img className="chip-icon" src={`/art/services/${svc.art}.webp`} alt="" aria-hidden="true" width="24" height="24" loading="lazy" decoding="async" />}
       <span className="chip-name">{svc.name}</span>
       {active && svc.countable && <span className="chip-count">{count}</span>}
       <span className="chip-price">{priceLabel}</span>
@@ -48,7 +48,7 @@ function ServiceChip({ svc, count, disabled, onToggle }) {
         .chip-active { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(194,24,91,0.25); }
         .chip-active:hover:not(:disabled) { background: var(--accent-hover); }
         .chip:disabled { opacity: 0.45; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
-        .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+        .chip-icon { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; margin-left: -4px; }
         .chip-name { line-height: 1.2; }
         .chip-count { background: rgba(255,255,255,0.3); min-width: 22px; height: 22px; border-radius: 11px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; }
         .chip-price { font-size: 0.8rem; opacity: 0.85; }
