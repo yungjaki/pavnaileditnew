@@ -220,8 +220,8 @@ export default function Book() {
     const length = inspo.autoLength || nailLength;
     setSelected(prev => {
       const base = withoutInspoItems(prev);
-      // An inspo that sets a base service replaces whatever base was chosen before.
-      if (added.some(n => BASE_SERVICES.includes(n))) BASE_SERVICES.forEach(b => { delete base[b]; });
+      // An inspo that sets a gel replaces the gel chosen before (extensions can stay).
+      if (added.some(n => n === GEL_SHORT || n === GEL_LONG)) { delete base[GEL_SHORT]; delete base[GEL_LONG]; }
       added.forEach(n => { base[n] = base[n] || 1; });
       return reconcileSelection(base, length, added.find(n => BASE_SERVICES.includes(n)));
     });
@@ -591,7 +591,7 @@ export default function Book() {
             </div>
             {fe.services && <p className="field-error" id="services-error">{fe.services}</p>}
             <p className="hint" role="status" style={{ marginTop: "0.6rem" }}>
-              {autoNote || "Избери една основна услуга (гел или изграждане) и добави декорации по желание."}
+              {autoNote || "Избери гел (за къси или за дълги нокти) и/или изграждане, после добави декорации по желание."}
             </p>
           </fieldset>
 
