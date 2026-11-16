@@ -7,7 +7,7 @@ import { createBooking, cancelBooking, syncCalendarCreate, BookingError } from "
 import {
   isValidDateStr, strToDate, earliestBookableDate, todayInSofia, isDateBlocked,
   getSlotsForDate, isInBreak, normaliseSelection, computeSubtotal, describeItems,
-  NAIL_LENGTH_PRICES, MAX_ACTIVE_BOOKINGS,
+  NAIL_LENGTH_PRICES, MAX_ACTIVE_BOOKINGS, validateCombination,
 } from "../../lib/bookingRules";
 import {
   isAdmin, rateLimit, cleanText, EMAIL_RE, PHONE_RE, TIME_RE, newCancelToken, tokenMatches,
@@ -105,6 +105,11 @@ async function create(req, res) {
     const { items, error: svcError } = normaliseSelection(selection);
     if (svcError) errors.services = svcError;
     else if (items.length === 0) errors.services = "Избери поне една услуга.";
+    else {
+      // Same combination rules as the page: one base service, gel matches length.
+      const comboError = validateCombination(items, nailLength);
+      if (comboError) errors.services = comboError;
+    }
 
     // Date/slot rules — the same ones the calendar uses on the page.
     if (!isValidDateStr(date) || !TIME_RE.test(time)) {

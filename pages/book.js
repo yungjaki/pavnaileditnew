@@ -6,6 +6,8 @@ import InspoGallery from "../components/InspoGallery";
 import {
   SERVICES, ADDONS, ALL_ITEMS, TIMES, NAIL_LENGTH_PRICES, MAX_ACTIVE_BOOKINGS,
   isDateBlocked, getSlotsForDate, strToDate, toDateStr, isInBreak,
+  reconcileSelection, gelForLength, defaultLengthForGel, validateCombination, normaliseSelection,
+  BASE_SERVICES, GEL_SHORT, GEL_LONG,
 } from "../lib/bookingRules";
 
 const LIMIT_MSG = `Вече имаш ${MAX_ACTIVE_BOOKINGS} запазени часа напред. Можеш да запазиш нов, след като мине някой от тях.`;
@@ -77,6 +79,11 @@ export default function Book() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [breaks, setBreaks] = useState([]);
   const [selectedInspoId, setSelectedInspoId] = useState(null);
+  const [designSource, setDesignSource] = useState(null); // "inspo" | "upload" | null
+  const [autoNote, setAutoNote] = useState("");
+  const inspoItemsRef = useRef([]);   // service names the current inspo added
+  const inspoRequestRef = useRef(0);  // ignore late photo downloads from an older inspo
+  const selectedDateRef = useRef("");
   const [waitlistTime, setWaitlistTime] = useState(null);
   const [waitlistDone, setWaitlistDone] = useState(false);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
@@ -135,9 +142,11 @@ export default function Book() {
         return getSlotsForDate(date).every(t => booked.includes(t));
       };
 
+      const keepDate = selectedDateRef.current;
       fpInstance.current = flatpickr(flatpickrRef.current, {
         locale: Bulgarian,
         minDate: minBookingDate,
+        defaultDate: keepDate ? strToDate(keepDate) : undefined,
         dateFormat: "d.m.Y",
         disableMobile: true,
         disable: [
@@ -147,6 +156,7 @@ export default function Book() {
         ],
         onChange: ([date]) => {
           if (!date) return;
+          selectedDateRef.current = toDateStr(date);
           setSelectedDate(toDateStr(date));
           setSelectedTime("");
           setWaitlistTime(null);
@@ -161,6 +171,13 @@ export default function Book() {
           if (bookedCount > 0 && bookedCount < slots.length) dayElem.classList.add("day-partial");
         },
       });
+      // The previously chosen day was booked out or blocked meanwhile: clear it.
+      if (keepDate && fpInstance.current.selectedDates.length === 0) {
+        selectedDateRef.current = "";
+        setSelectedDate("");
+        setSelectedTime("");
+        setFieldErrors(f => ({ ...f, date: "Избраната дата вече не е свободна — избери друга." }));
+      }
     });
     return () => { cancelled = true; fpInstance.current?.destroy(); };
   }, [breaks, takenSlots]);
@@ -179,24 +196,65 @@ export default function Book() {
   const discount = giftValid ? Math.min(giftAmount, subtotal) : 0;
   const totalPrice = Math.max(0, subtotal - discount);
 
+  const withoutInspoItems = (sel) => {
+    const next = { ...sel };
+    inspoItemsRef.current.forEach(n => { delete next[n]; });
+    return next;
+  };
+
   const handleInspoSelect = (inspo) => {
+    const requestId = ++inspoRequestRef.current;
+    setAutoNote("");
     if (!inspo) {
+      // Undo what the previous inspo filled in.
+      setSelected(prev => withoutInspoItems(prev));
+      inspoItemsRef.current = [];
       setSelectedInspoId(null);
+      if (designSource === "inspo") { setDesignFile(null); setDesignSource(null); }
       return;
     }
     setSelectedInspoId(inspo.id);
-    const newSelected = {};
-    ALL_ITEMS.forEach(svc => {
-      if (inspo.autoServices?.includes(svc.name) || inspo.autoAddons?.includes(svc.name)) newSelected[svc.name] = 1;
+    const added = ALL_ITEMS
+      .filter(svc => inspo.autoServices?.includes(svc.name) || inspo.autoAddons?.includes(svc.name))
+      .map(svc => svc.name);
+    const length = inspo.autoLength || nailLength;
+    setSelected(prev => {
+      const base = withoutInspoItems(prev);
+      // An inspo that sets a gel replaces the gel chosen before (extensions can stay).
+      if (added.some(n => n === GEL_SHORT || n === GEL_LONG)) { delete base[GEL_SHORT]; delete base[GEL_LONG]; }
+      added.forEach(n => { base[n] = base[n] || 1; });
+      return reconcileSelection(base, length, added.find(n => BASE_SERVICES.includes(n)));
     });
-    setSelected(prev => ({ ...prev, ...newSelected }));
+    inspoItemsRef.current = added;
     if (inspo.autoLength) setNailLength(inspo.autoLength);
-    if (inspo.src) {
-      fetch(inspo.src)
-        .then(r => r.blob())
-        .then(blob => setDesignFile(new File([blob], `inspo-${inspo.id}.jpg`, { type: blob.type || "image/jpeg" })))
-        .catch(() => {});
+    setFieldErrors(f => ({ ...f, services: undefined }));
+    if (designSource !== "upload") {
+      setDesignFile(null);
+      setDesignSource(null);
+      if (inspo.src) {
+        fetch(inspo.src)
+          .then(r => r.blob())
+          .then(blob => {
+            // Only use it if this is still the chosen inspo and no own photo was uploaded since.
+            if (requestId !== inspoRequestRef.current) return;
+            setDesignFile(new File([blob], `inspo-${inspo.id}.jpg`, { type: blob.type || "image/jpeg" }));
+            setDesignSource("inspo");
+          })
+          .catch(() => {});
+      }
     }
+  };
+
+  // Changing the length keeps the gel variant in line with it.
+  const changeLength = (len) => {
+    setNailLength(len);
+    setFieldErrors(f => ({ ...f, services: undefined }));
+    const want = gelForLength(len);
+    const current = selected[GEL_SHORT] ? GEL_SHORT : selected[GEL_LONG] ? GEL_LONG : null;
+    setAutoNote(want && current && current !== want
+      ? `Сменихме на „${want}“, за да съвпада с избраната дължина.`
+      : "");
+    setSelected(prev => reconcileSelection(prev, len));
   };
 
   const toggleService = (svc) => {
@@ -206,9 +264,22 @@ export default function Book() {
       return;
     }
     setFieldErrors(f => ({ ...f, services: undefined }));
+    setAutoNote("");
+    const isGel = svc.name === GEL_SHORT || svc.name === GEL_LONG;
+    if (!selected[svc.name] && isGel && gelForLength(nailLength) !== svc.name) {
+      // Picking a gel variant sets a matching length (the length decides the price).
+      const len = defaultLengthForGel(svc.name);
+      const label = len === "long" ? "Дълги" : "Къси";
+      setNailLength(len);
+      setAutoNote(nailLength
+        ? `Сменихме дължината на „${label}“, за да съвпада с „${svc.name}“.`
+        : `Избрахме дължина „${label}“ — можеш да я смениш по-горе.`);
+      setSelected(prev => reconcileSelection({ ...prev, [svc.name]: 1 }, len, svc.name));
+      return;
+    }
     setSelected(prev => {
       const current = prev[svc.name];
-      if (!current) return { ...prev, [svc.name]: 1 };
+      if (!current) return reconcileSelection({ ...prev, [svc.name]: 1 }, nailLength, svc.name);
       if (svc.countable && current < svc.max) return { ...prev, [svc.name]: current + 1 };
       const next = { ...prev };
       delete next[svc.name];
@@ -272,6 +343,10 @@ export default function Book() {
     if (!/^\+?[0-9 ()\-]{6,20}$/.test(phone.trim())) errs.phone = "Въведи валиден телефон.";
     if (!/^\S+@\S+\.\S{2,}$/.test(email.trim())) errs.email = "Въведи валиден имейл.";
     if (Object.keys(selected).length === 0) errs.services = "Избери поне една услуга.";
+    else {
+      const comboError = validateCombination(normaliseSelection(selected).items, nailLength);
+      if (comboError) errs.services = comboError;
+    }
     if (!selectedDate || !selectedTime) errs.date = "Избери дата и час.";
     if (!consent) errs.consent = "Нужно е съгласие за обработка на данните.";
     if (Object.keys(errs).length) return showError("Провери отбелязаните полета.", errs);
@@ -344,9 +419,6 @@ export default function Book() {
     }
   };
 
-  const isChipDisabled = (svc) =>
-    (svc.name === "Гел - къси нокти" && (nailLength === "long" || nailLength === "xlong")) ||
-    (svc.name === "Гел - дълги нокти" && (nailLength === "short" || nailLength === "medium"));
 
   const fe = fieldErrors;
   const describedBy = (k) => (fe[k] ? `${k}-error` : undefined);
@@ -504,7 +576,7 @@ export default function Book() {
           <hr className="divider" />
 
           <span className="section-label" id="length-label">Дължина на ноктите</span>
-          <NailLengthPicker value={nailLength} onChange={setNailLength} />
+          <NailLengthPicker value={nailLength} onChange={changeLength} />
 
           <hr className="divider" />
 
@@ -513,11 +585,14 @@ export default function Book() {
             <div className="chips-wrap">
               {SERVICES.map(svc => (
                 <span key={svc.name} ref={svc.name === "Камъни" ? stoneTriggerRef : undefined} style={{ display: "inline-flex" }}>
-                  <ServiceChip svc={svc} count={selected[svc.name] || 0} disabled={isChipDisabled(svc)} onToggle={toggleService} />
+                  <ServiceChip svc={svc} count={selected[svc.name] || 0} disabled={false} onToggle={toggleService} />
                 </span>
               ))}
             </div>
             {fe.services && <p className="field-error" id="services-error">{fe.services}</p>}
+            <p className="hint" role="status" style={{ marginTop: "0.6rem" }}>
+              {autoNote || "Избери гел (за къси или за дълги нокти) и/или изграждане, после добави декорации по желание."}
+            </p>
           </fieldset>
 
           <fieldset style={{ border: 0, padding: 0, margin: "1.5rem 0 0" }}>
@@ -611,7 +686,8 @@ export default function Book() {
                 }
                 setFieldErrors(x => ({ ...x, design: undefined }));
                 setDesignFile(f || null);
-                setSelectedInspoId(null);
+                setDesignSource(f ? "upload" : null);
+                inspoRequestRef.current++; // cancel any inspo photo still downloading
               }}
             />
             {fe.design && <p className="field-error">{fe.design}</p>}
