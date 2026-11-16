@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import heroImg from "../public/nails/2/nail1.jpg";
+import heroImg from "../public/nails/3/nail3.jpg";
 import { playHeroIntro, glossSweep } from "../lib/heroMotion";
 
 // useLayoutEffect runs before paint (no flash); it is a no-op on the server.
