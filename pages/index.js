@@ -1,9 +1,13 @@
 import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import heroImg from "../public/nails/2/nail1.jpg";
+import { playHeroIntro, glossSweep } from "../lib/heroMotion";
+
+// useLayoutEffect runs before paint (no flash); it is a no-op on the server.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const CircularGallery = dynamic(() => import("../components/CircularGallery"), { ssr: false });
 
@@ -46,6 +50,13 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const [upcoming, setUpcoming] = useState(0);
   const pageRef = useRef(null);
+  const heroRef = useRef(null);
+  const ctaGlossRef = useRef(null);
+
+  useIsoLayoutEffect(() => {
+    if (!heroRef.current) return;
+    return playHeroIntro(heroRef.current);
+  }, []);
 
   useEffect(() => {
     setUpcoming(countUpcomingBookings());
@@ -170,7 +181,24 @@ export default function Home() {
         .hero-photo {
           position: relative; z-index: 1; border-radius: 220px 220px 28px 28px; overflow: hidden;
           aspect-ratio: 4 / 5; box-shadow: 0 30px 60px rgba(150,60,100,0.22);
+          background: #f6dde7; /* the "bare nail" the polish is brushed onto */
           transform: translateY(calc(var(--scroll) * -0.06px));
+        }
+        .hero-photo-clip { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+        .hero-photo-inner { position: absolute; inset: 0; transform-origin: 50% 80%; }
+        .gloss {
+          position: absolute; top: -10%; bottom: -10%; left: -55%; width: 40%;
+          background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+          pointer-events: none; visibility: hidden; mix-blend-mode: soft-light;
+        }
+        /* Headline words rise out of their own line */
+        .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 0.08em 0.1em; margin: 0 -0.08em -0.1em; }
+        .word { display: inline-block; }
+        :global(.hero-cta) { position: relative; overflow: hidden; isolation: isolate; }
+        :global(.cta-gloss) {
+          position: absolute; top: 0; bottom: 0; left: 0; width: 45%; z-index: -1;
+          background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.35), rgba(255,255,255,0));
+          pointer-events: none; visibility: hidden;
         }
         @media (max-width: 860px) {
           .hero { grid-template-columns: 1fr; gap: 2.5rem; min-height: 0; padding: 2.5rem 1.25rem 3.5rem; text-align: center; }
@@ -269,28 +297,41 @@ export default function Home() {
         </header>
 
         <main>
-          <div className="hero">
+          <div className="hero" ref={heroRef}>
             <div className="hero-blob blob-1" aria-hidden="true" />
             <div className="hero-blob blob-2" aria-hidden="true" />
             <div className="hero-content">
-              <h1>Маникюр, <em>създаден</em> за теб</h1>
-              <p className="hero-lead">Модерен гел маникюр и уникален nail art. Виж свободните часове и запази своя за минута.</p>
-              <div className="hero-actions">
-                <Link href="/book" className="hero-cta">Запази час</Link>
+              <h1>
+                <span className="w"><span className="word" data-anim>Маникюр,</span></span>{" "}
+                <span className="w"><em className="word" data-anim>създаден</em></span>{" "}
+                <span className="w"><span className="word" data-anim>за</span></span>{" "}
+                <span className="w"><span className="word" data-anim>теб</span></span>
+              </h1>
+              <p className="hero-lead rise" data-anim>Модерен гел маникюр и уникален nail art. Виж свободните часове и запази своя за минута.</p>
+              <div className="hero-actions rise" data-anim>
+                <Link href="/book" className="hero-cta" onMouseEnter={() => glossSweep(ctaGlossRef.current)} onFocus={() => glossSweep(ctaGlossRef.current)}>
+                  <span className="cta-label">Запази час</span>
+                  <span className="cta-gloss" ref={ctaGlossRef} aria-hidden="true" />
+                </Link>
                 <Link href="/pics" className="hero-link">Разгледай галерията</Link>
               </div>
-              <p className="hero-place">Пловдив · по предварителна резервация</p>
+              <p className="hero-place rise" data-anim>Пловдив · по предварителна резервация</p>
             </div>
-            <div className="hero-photo">
-              <Image
-                src={heroImg}
-                alt="Нежен розов маникюр с черен контур на бадемовидни нокти"
-                fill
-                priority
-                placeholder="blur"
-                sizes="(max-width: 860px) 360px, 480px"
-                style={{ objectFit: "cover", objectPosition: "50% 20%" }}
-              />
+            <div className="hero-photo" data-anim>
+              <div className="hero-photo-clip">
+                <div className="hero-photo-inner">
+                  <Image
+                    src={heroImg}
+                    alt="Нежен розов маникюр с черен контур на бадемовидни нокти"
+                    fill
+                    priority
+                    placeholder="blur"
+                    sizes="(max-width: 860px) 360px, 480px"
+                    style={{ objectFit: "cover", objectPosition: "50% 20%" }}
+                  />
+                </div>
+                <span className="gloss" aria-hidden="true" />
+              </div>
             </div>
           </div>
 
