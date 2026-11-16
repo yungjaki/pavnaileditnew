@@ -1,5 +1,6 @@
 import Head from "next/head";
 import { useState, useEffect, useRef } from "react";
+import { SERVICES, ADDONS } from "../../lib/bookingRules";
 
 const NAIL_LENGTH_LABELS = {
   short:  "Къси (0–2mm)",
@@ -38,7 +39,9 @@ function LoginScreen({ onLogin }) {
     });
     setLoading(false);
     if (res.ok) onLogin();
-    else setErr("❌ Грешна парола");
+    else if (res.status === 429) setErr("Твърде много опити. Опитай пак след 15 минути.");
+    else if (res.status === 503) setErr("Входът не е настроен (липсва ADMIN_PASSWORD).");
+    else setErr("Грешна парола");
   };
 
   return (
@@ -113,7 +116,7 @@ function LoginScreen({ onLogin }) {
           padding: 0.9rem;
           border: none;
           border-radius: 50px;
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          background: var(--accent);
           color: #fff;
           font-size: 1rem;
           font-weight: 600;
@@ -330,6 +333,7 @@ export default function AdminPage() {
     <>
       <Head>
         <title>Admin – PavNailedIt</title>
+        <meta name="robots" content="noindex, nofollow" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/main.min.css"
@@ -360,7 +364,7 @@ export default function AdminPage() {
         .topbar-logo {
           font-family: "Cormorant Garamond", serif;
           font-size: 1.5rem;
-          color: #ff6ec4;
+          color: var(--accent);
           font-weight: 600;
         }
         .topbar-right { display: flex; align-items: center; gap: 1rem; }
@@ -376,7 +380,7 @@ export default function AdminPage() {
           transition: all 0.2s;
           font-family: "DM Sans", sans-serif;
         }
-        .logout-btn:hover { border-color: #ff6ec4; color: #ff6ec4; }
+        .logout-btn:hover { border-color: var(--accent); color: var(--accent); }
 
         /* TABS */
         .tabs {
@@ -398,9 +402,9 @@ export default function AdminPage() {
           transition: all 0.2s;
           font-family: "DM Sans", sans-serif;
         }
-        .tab:hover { border-color: #f9a1c2; color: #ff6ec4; }
+        .tab:hover { border-color: #f9a1c2; color: var(--accent); }
         .tab.active {
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          background: var(--accent);
           color: #fff;
           border-color: transparent;
           box-shadow: 0 4px 15px rgba(255, 110, 196, 0.3);
@@ -433,7 +437,7 @@ export default function AdminPage() {
           font-family: "Cormorant Garamond", serif;
           font-size: 2.2rem;
           font-weight: 600;
-          color: #ff6ec4;
+          color: var(--accent);
         }
         .stat-label { color: #b08097; font-size: 0.8rem; margin-top: 0.25rem; letter-spacing: 0.5px; }
 
@@ -468,7 +472,7 @@ export default function AdminPage() {
           transition: all 0.2s;
           font-family: "DM Sans", sans-serif;
         }
-        .clear-btn:hover { border-color: #f9a1c2; color: #ff6ec4; }
+        .clear-btn:hover { border-color: #f9a1c2; color: var(--accent); }
 
         /* APPOINTMENT CARDS */
         .cards { display: grid; gap: 1rem; }
@@ -500,7 +504,7 @@ export default function AdminPage() {
         }
         .badge {
           background: #fff0f6;
-          color: #ff6ec4;
+          color: var(--accent);
           padding: 0.2rem 0.7rem;
           border-radius: 50px;
           font-size: 0.78rem;
@@ -514,7 +518,7 @@ export default function AdminPage() {
         }
         .card-price {
           font-weight: 700;
-          color: #ff6ec4;
+          color: var(--accent);
           font-size: 0.95rem;
         }
         .card-design { margin-top: 0.4rem; }
@@ -543,14 +547,14 @@ export default function AdminPage() {
           border-radius: 50px;
           border: 1.5px solid rgba(249, 161, 194, 0.4);
           background: #fff0f6;
-          color: #ff6ec4;
+          color: var(--accent);
           font-size: 0.82rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
           font-family: "DM Sans", sans-serif;
         }
-        .btn-reschedule:hover { background: #ff6ec4; color: #fff; }
+        .btn-reschedule:hover { background: var(--accent); color: #fff; }
 
         /* CALENDAR TAB */
         .calendar-wrap {
@@ -595,7 +599,7 @@ export default function AdminPage() {
           padding: 0.9rem;
           border: none;
           border-radius: 50px;
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          background: var(--accent);
           color: #fff;
           font-size: 0.95rem;
           font-weight: 600;
@@ -605,7 +609,7 @@ export default function AdminPage() {
           font-family: "DM Sans", sans-serif;
         }
         .gift-create-btn:hover { transform: scale(1.02); }
-        .gift-msg { margin-top: 0.75rem; font-size: 0.9rem; font-weight: 500; color: #ff6ec4; }
+        .gift-msg { margin-top: 0.75rem; font-size: 0.9rem; font-weight: 500; color: var(--accent); }
 
         .empty { color: #b08097; text-align: center; padding: 3rem; font-size: 0.95rem; }
       `}</style>
@@ -997,8 +1001,8 @@ export default function AdminPage() {
           )}
 
           {tab === "inspos" && (() => {
-            const ALL_SERVICES = ["Гел - къси нокти","Гел - дълги нокти","Изграждане","Френски","Камъни","Стикери","Буква","Сребърно/златно"];
-            const ALL_ADDONS   = ["3D цветя","3D линии","Blooming gel","Blooming gel цвете","Панделка","Аура","Омбре","Бяло омбре","Животински дизайн"];
+            const ALL_SERVICES = SERVICES.filter(s => !s.countable || s.name === "Камъни").map(s => s.name);
+            const ALL_ADDONS   = ADDONS.map(s => s.name);
             const toggleArr = (arr, setArr, val) =>
               arr.includes(val) ? setArr(arr.filter(x => x !== val)) : setArr([...arr, val]);
 
@@ -1055,7 +1059,7 @@ export default function AdminPage() {
                     <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginTop:"4px"}}>
                       {ALL_SERVICES.map(s => (
                         <button key={s} type="button" onClick={() => toggleArr(inspoServices, setInspoServices, s)}
-                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoServices.includes(s)?"linear-gradient(135deg,#f8b7d1,#ff6ec4)":"#fff",color:inspoServices.includes(s)?"#fff":"#c994b0",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
+                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoServices.includes(s)?"#c2185b":"#fff",color:inspoServices.includes(s)?"#fff":"#6b4559",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
                           {s}
                         </button>
                       ))}
@@ -1067,7 +1071,7 @@ export default function AdminPage() {
                     <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginTop:"4px"}}>
                       {ALL_ADDONS.map(s => (
                         <button key={s} type="button" onClick={() => toggleArr(inspoAddons, setInspoAddons, s)}
-                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoAddons.includes(s)?"linear-gradient(135deg,#f8b7d1,#ff6ec4)":"#fff",color:inspoAddons.includes(s)?"#fff":"#c994b0",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
+                          style={{padding:"4px 12px",borderRadius:"50px",border:"1.5px solid rgba(249,161,194,0.4)",background:inspoAddons.includes(s)?"#c2185b":"#fff",color:inspoAddons.includes(s)?"#fff":"#6b4559",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
                           {s}
                         </button>
                       ))}

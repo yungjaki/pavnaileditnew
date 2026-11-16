@@ -80,7 +80,6 @@ export default function Aftercare() {
       </Head>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #fdfaf8; font-family: 'DM Sans', sans-serif; }
@@ -112,11 +111,11 @@ export default function Aftercare() {
           border-radius: 50%;
         }
         .ac-back {
-          display: inline-flex; align-items: center; gap: 6px;
-          color: #b8a898; font-size: 0.85rem; text-decoration: none;
+          display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
+          color: #6e5646; font-size: 0.95rem; text-decoration: none;
           margin-bottom: 2.5rem; transition: color 0.2s; position: relative; z-index: 1;
         }
-        .ac-back:hover { color: #8b6f5e; }
+        .ac-back:hover { color: #5c3d2e; }
         .ac-hero-icon {
           font-size: 3rem; display: block; margin-bottom: 1rem;
           animation: floatIcon 3s ease-in-out infinite;
@@ -136,9 +135,9 @@ export default function Aftercare() {
           margin-bottom: 1rem;
           position: relative; z-index: 1;
         }
-        .ac-hero h1 em { color: #c9956e; font-style: italic; }
+        .ac-hero h1 em { color: #94603a; font-style: italic; }
         .ac-hero-sub {
-          font-size: 1rem; color: #9c7c6a; max-width: 420px;
+          font-size: 1rem; color: #6e5646; max-width: 420px;
           margin: 0 auto; line-height: 1.7; position: relative; z-index: 1;
         }
 
@@ -149,7 +148,7 @@ export default function Aftercare() {
           font-size: 1.8rem; font-weight: 400; color: #5c3d2e;
           margin-bottom: 0.5rem;
         }
-        .ac-section-sub { font-size: 0.88rem; color: #b8a898; margin-bottom: 2rem; }
+        .ac-section-sub { font-size: 0.88rem; color: #6e5646; margin-bottom: 2rem; }
 
         .tips-grid {
           display: grid;
@@ -229,8 +228,8 @@ export default function Aftercare() {
         }
         .faq-item:hover { box-shadow: 0 4px 16px rgba(180,140,100,0.1); }
         .faq-q { font-size: 0.95rem; font-weight: 700; color: #5c3d2e; margin-bottom: 8px; }
-        .faq-q::before { content: 'Q  '; color: #c9956e; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; }
-        .faq-a { font-size: 0.88rem; color: #8a7060; line-height: 1.65; }
+        .faq-q::before { content: 'Q  '; color: #94603a; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; }
+        .faq-a { font-size: 0.88rem; color: #6e5646; line-height: 1.65; }
 
         /* ── CTA ── */
         .ac-cta {
@@ -242,10 +241,10 @@ export default function Aftercare() {
           font-family: 'Cormorant Garamond', serif;
           font-size: 2rem; font-weight: 300; color: #5c3d2e; margin-bottom: 0.75rem;
         }
-        .ac-cta p { color: #9c7c6a; font-size: 0.95rem; margin-bottom: 1.5rem; }
+        .ac-cta p { color: #6e5646; font-size: 0.95rem; margin-bottom: 1.5rem; }
         .ac-cta-btn {
           display: inline-block;
-          background: linear-gradient(135deg, #f8b7d1, #ff6ec4);
+          background: var(--accent);
           color: #fff;
           padding: 0.9rem 2.5rem;
           border-radius: 50px;

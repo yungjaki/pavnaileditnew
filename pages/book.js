@@ -3,134 +3,116 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import NailLengthPicker from "../components/NailLengthPicker";
 import InspoGallery from "../components/InspoGallery";
+import {
+  SERVICES, ADDONS, ALL_ITEMS, TIMES, NAIL_LENGTH_PRICES, MAX_ACTIVE_BOOKINGS,
+  isDateBlocked, getSlotsForDate, strToDate, toDateStr, isInBreak,
+} from "../lib/bookingRules";
 
-const SERVICES = [
-  { name: "Гел - къси нокти",  price: 18,                icon: "💅" },
-  { name: "Гел - дълги нокти", price: 20,                icon: "💅" },
-  { name: "Изграждане",        price: 35,                icon: "🔨" },
-  { name: "1 нокът",           price: 1.50, countable: true, max: 5, icon: "☝️" },
-  { name: "Френски",           price: 2,                 icon: "🤍" },
-  { name: "Камъни",            price: 0.2, countable: true, max: 500, icon: "💎" },
-  { name: "Стикери",           price: 1,                 icon: "⭐" },
-  { name: "Буква",             price: 1,                 icon: "🔤" },
-  { name: "Сребърно/златно",   price: 2,                 icon: "✨" },
-];
+const LIMIT_MSG = `Вече имаш ${MAX_ACTIVE_BOOKINGS} запазени часа напред. Можеш да запазиш нов, след като мине някой от тях.`;
 
-const ADDONS = [
-  { name: "3D цветя",           price: 4, countable: true, max: 4, icon: "🌸" },
-  { name: "3D линии",           price: 4,                icon: "〰️" },
-  { name: "Blooming gel",       price: 3,                icon: "🌊" },
-  { name: "Blooming gel цвете", price: 4,                icon: "🌺" },
-  { name: "Панделка",           price: 2, countable: true, max: 4, icon: "🎀" },
-  { name: "Аура",               price: 3.5,              icon: "🔮" },
-  { name: "Омбре",              price: 3.5,              icon: "🌅" },
-  { name: "Бяло омбре",         price: 4,                icon: "🤍" },
-  { name: "Животински дизайн",  price: 3,                icon: "🐆" },
-];
-
-const TIMES = ["10:00", "14:00", "16:30"];
-const HOLIDAYS = ["01.01.2025","03.03.2025","01.05.2025","06.05.2025","24.05.2025","06.09.2025","22.09.2025","24.12.2026","25.12.2026","26.12.2026"];
-const BREAKS = [{ start: "20.12.2026", end: "25.12.2026" }];
-
-// Конкретни дати, в които не работя
-const BLOCKED_DATES = ["17.10.2026","18.10.2026","31.10.2026","01.11.2026","11.11.2026","18.11.2026"];
-
-const toDateStr = (date) => {
-  const dd = date.getDate().toString().padStart(2, "0");
-  const mm = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `${dd}.${mm}.${date.getFullYear()}`;
-};
-
-// true = денят е затворен за записване
-function isDateBlocked(date) {
-  const y = date.getFullYear();
-  const m = date.getMonth(); // 0 = януари, 9 = октомври, 11 = декември
-  const dow = date.getDay(); // 0 = неделя, 1 = понеделник
-  if (BLOCKED_DATES.includes(toDateStr(date))) return true;
-  if (y === 2026 && m === 9) return true;                 // целият октомври 2026
-  if (y === 2026 && m === 11 && dow === 1) return true;   // всеки понеделник в декември 2026
-  return false;
+function readMyBookings() {
+  try {
+    const now = new Date();
+    const arr = JSON.parse(localStorage.getItem("pavBookings") || "[]");
+    return arr.filter(b => {
+      const [d, m, y] = String(b.date).split(".");
+      const [hh, mm] = String(b.time).split(":");
+      return new Date(y, m - 1, d, hh, mm) > now;
+    });
+  } catch {
+    return [];
+  }
 }
 
-// Кои часове има за даден ден
-function getSlotsForDate(date) {
-  const dow = date.getDay();
-  if (dow === 0 || dow === 6) return ["14:00", "16:30"];              // уикенд
-  if (HOLIDAYS.includes(toDateStr(date))) return ["10:00", "14:00", "16:30"]; // празник
-  // Ноември 2026 (без 30-ти): делник само 10:00
-  if (date.getFullYear() === 2026 && date.getMonth() === 10 && date.getDate() !== 30) return ["10:00"];
-  return ["16:30"];                                                    // делник (училище до 13-14)
-}
-
-function strToDate(dateStr) {
-  const [d, m, y] = dateStr.split(".").map(Number);
-  return new Date(y, m - 1, d);
+function ServiceChip({ svc, count, disabled, onToggle }) {
+  const active = count > 0;
+  const priceLabel = svc.countable ? `${svc.price}€ / бр.` : `${svc.price}€`;
+  return (
+    <button
+      type="button"
+      className={`chip ${active ? "chip-active" : ""}`}
+      onClick={() => !disabled && onToggle(svc)}
+      disabled={disabled}
+      aria-pressed={active}
+      title={disabled ? "Не е съвместимо с избраната дължина" : priceLabel}
+    >
+      {svc.icon && <span className="chip-icon" aria-hidden="true">{svc.icon}</span>}
+      <span className="chip-name">{svc.name}</span>
+      {active && svc.countable && <span className="chip-count">{count}</span>}
+      <span className="chip-price">{priceLabel}</span>
+      <style jsx>{`
+        .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0.5rem 0.95rem; border-radius: 50px; border: 1.5px solid rgba(201,64,144,0.3); background: #fff; color: var(--text-mid); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.2s var(--ease-out); font-family: 'DM Sans', sans-serif; }
+        .chip:hover:not(:disabled) { border-color: var(--pink-deep); transform: translateY(-2px); background: #fff0f6; }
+        .chip-active { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(194,24,91,0.25); }
+        .chip-active:hover:not(:disabled) { background: var(--accent-hover); }
+        .chip:disabled { opacity: 0.45; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
+        .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+        .chip-name { line-height: 1.2; }
+        .chip-count { background: rgba(255,255,255,0.3); min-width: 22px; height: 22px; border-radius: 11px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; }
+        .chip-price { font-size: 0.8rem; opacity: 0.85; }
+      `}</style>
+    </button>
+  );
 }
 
 export default function Book() {
-  const [bookings, setBookings] = useState([]);
+  const [takenSlots, setTakenSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selected, setSelected] = useState({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [website, setWebsite] = useState(""); // honeypot
   const [giftCode, setGiftCode] = useState("");
   const [giftFeedback, setGiftFeedback] = useState("");
-  const [giftDiscount, setGiftDiscount] = useState(0);
+  const [giftAmount, setGiftAmount] = useState(0);
   const [giftValid, setGiftValid] = useState(false);
+  const [giftChecking, setGiftChecking] = useState(false);
   const [designFile, setDesignFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [nailLength, setNailLength] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [breaks, setBreaks] = useState([]);
   const [selectedInspoId, setSelectedInspoId] = useState(null);
-  const [waitlistTime, setWaitlistTime] = useState(null); // which slot to join waitlist for
+  const [waitlistTime, setWaitlistTime] = useState(null);
   const [waitlistDone, setWaitlistDone] = useState(false);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistError, setWaitlistError] = useState("");
   const [stonePromptOpen, setStonePromptOpen] = useState(false);
   const [stoneInput, setStoneInput] = useState("");
   const flatpickrRef = useRef(null);
   const fpInstance = useRef(null);
+  const errorRef = useRef(null);
+  const stoneTriggerRef = useRef(null);
 
   useEffect(() => {
-    // Migrate legacy single-booking keys into the array format
-    const legacyId   = localStorage.getItem("pavBooking");
-    const legacyDate = localStorage.getItem("pavBookingDate");
-    const legacyTime = localStorage.getItem("pavBookingTime");
-    if (legacyId && legacyDate && legacyTime) {
-      const existing = JSON.parse(localStorage.getItem("pavBookings") || "[]");
-      if (!existing.find(b => b.id === legacyId)) {
-        existing.push({ id: legacyId, date: legacyDate, time: legacyTime });
+    // Migrate the old single-booking keys into the array format
+    try {
+      const legacyId = localStorage.getItem("pavBooking");
+      const legacyDate = localStorage.getItem("pavBookingDate");
+      const legacyTime = localStorage.getItem("pavBookingTime");
+      if (legacyId && legacyDate && legacyTime) {
+        const existing = JSON.parse(localStorage.getItem("pavBookings") || "[]");
+        if (!existing.find(b => b.id === legacyId)) {
+          existing.push({ id: legacyId, date: legacyDate, time: legacyTime });
+        }
         localStorage.setItem("pavBookings", JSON.stringify(existing));
+        ["pavBooking", "pavBookingDate", "pavBookingTime"].forEach(k => localStorage.removeItem(k));
       }
-      localStorage.removeItem("pavBooking");
-      localStorage.removeItem("pavBookingDate");
-      localStorage.removeItem("pavBookingTime");
-    }
-
-    // Drop past bookings and warn if at the 3-booking limit
-    const now = new Date();
-    let arr = JSON.parse(localStorage.getItem("pavBookings") || "[]");
-    arr = arr.filter(b => {
-      const [d, m, y] = b.date.split(".");
-      const [hh, mm] = b.time.split(":");
-      return new Date(y, m - 1, d, hh, mm) > now;
-    });
-    localStorage.setItem("pavBookings", JSON.stringify(arr));
-    if (arr.length >= 3) {
-      setError("❌ Вече имаш 3 запазени часа напред. Можеш да запазиш нов след като мине някой от тях.");
-    }
+      const mine = readMyBookings();
+      localStorage.setItem("pavBookings", JSON.stringify(mine));
+      if (mine.length >= MAX_ACTIVE_BOOKINGS) setError(LIMIT_MSG);
+    } catch {}
   }, []);
 
   useEffect(() => {
     fetch("/api/book")
       .then(r => r.json())
-      .then(data => setBookings(data.bookings || []))
+      .then(data => setTakenSlots(data.slots || []))
       .catch(console.error);
-  }, []);
-
-  useEffect(() => {
     fetch("/api/admin/breaks")
       .then(r => r.json())
       .then(data => setBreaks(data.breaks || []))
@@ -138,100 +120,64 @@ export default function Book() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
     if (!flatpickrRef.current) return;
-    import("flatpickr").then(({ default: flatpickr }) => {
-      import("flatpickr/dist/l10n/bg.js").then(({ Bulgarian }) => {
-        fpInstance.current?.destroy();
+    let cancelled = false;
+    Promise.all([import("flatpickr"), import("flatpickr/dist/l10n/bg.js")]).then(([{ default: flatpickr }, { Bulgarian }]) => {
+      if (cancelled) return;
+      fpInstance.current?.destroy();
 
-        const disabledRanges = breaks.map(b => ({
-          from: new Date(b.start + "T00:00:00"),
-          to:   new Date(b.end   + "T00:00:00"),
-        }));
+      const minBookingDate = new Date();
+      minBookingDate.setDate(minBookingDate.getDate() + 3);
 
-        const minBookingDate = new Date();
-        minBookingDate.setDate(minBookingDate.getDate() + 3);
+      const bookedOn = (dateStr) => takenSlots.filter(b => b.date === dateStr).map(b => b.time);
+      const isFullyBooked = (date) => {
+        const booked = bookedOn(toDateStr(date));
+        return getSlotsForDate(date).every(t => booked.includes(t));
+      };
 
-        const isFullyBooked = (date) => {
-          const dd = date.getDate().toString().padStart(2, "0");
-          const mm = (date.getMonth() + 1).toString().padStart(2, "0");
-          const yy = date.getFullYear();
-          const dateStr = `${dd}.${mm}.${yy}`;
+      fpInstance.current = flatpickr(flatpickrRef.current, {
+        locale: Bulgarian,
+        minDate: minBookingDate,
+        dateFormat: "d.m.Y",
+        disableMobile: true,
+        disable: [
+          (d) => isDateBlocked(d),
+          (d) => isFullyBooked(d),
+          (d) => isInBreak(d, breaks),
+        ],
+        onChange: ([date]) => {
+          if (!date) return;
+          setSelectedDate(toDateStr(date));
+          setSelectedTime("");
+          setWaitlistTime(null);
+          setFieldErrors(f => ({ ...f, date: undefined }));
+        },
+        onDayCreate: (_dObj, _dStr, _fp, dayElem) => {
+          const date = dayElem.dateObj;
+          if (!date || isDateBlocked(date) || isInBreak(date, breaks)) return;
           const slots = getSlotsForDate(date);
-          const bookedTimes = bookings.filter(b => b.date === dateStr).map(b => b.time);
-          return slots.every(t => bookedTimes.includes(t));
-        };
-
-        fpInstance.current = flatpickr(flatpickrRef.current, {
-          locale: Bulgarian,
-          minDate: minBookingDate,
-          dateFormat: "d.m.Y",
-          disableMobile: true,
-          disable: [
-            (d) => isDateBlocked(d),  // блокирани дати
-            (d) => isFullyBooked(d),  // fully booked days
-            ...disabledRanges,
-          ],
-          onChange: ([date]) => {
-            if (!date) return;
-            const d = date.getDate().toString().padStart(2, "0");
-            const m = (date.getMonth() + 1).toString().padStart(2, "0");
-            const y = date.getFullYear();
-            setSelectedDate(`${d}.${m}.${y}`);
-            setSelectedTime("");
-          },
-          onDayCreate: (_dObj, _dStr, _fp, dayElem) => {
-            const date = dayElem.dateObj;
-            if (!date) return;
-            if (isDateBlocked(date)) return;
-
-            const dd = date.getDate().toString().padStart(2, "0");
-            const mm = (date.getMonth() + 1).toString().padStart(2, "0");
-            const yy = date.getFullYear();
-            const dateStr = `${dd}.${mm}.${yy}`;
-
-            const inBreak = breaks.some(b => {
-              const from = new Date(b.start + "T00:00:00");
-              const to   = new Date(b.end   + "T00:00:00");
-              return date >= from && date <= to;
-            });
-            if (inBreak) return;
-
-            const slots = getSlotsForDate(date);
-            const bookedTimes = bookings.filter(b => b.date === dateStr).map(b => b.time);
-            const bookedCount = slots.filter(t => bookedTimes.includes(t)).length;
-
-            if (bookedCount > 0 && bookedCount < slots.length) {
-              dayElem.classList.add("day-partial");
-            }
-          },
-        });
+          const booked = bookedOn(toDateStr(date));
+          const bookedCount = slots.filter(t => booked.includes(t)).length;
+          if (bookedCount > 0 && bookedCount < slots.length) dayElem.classList.add("day-partial");
+        },
       });
     });
-    return () => fpInstance.current?.destroy();
-  }, [breaks, bookings]);
-
-  const getBookedTimes = (date) => bookings.filter(b => b.date === date).map(b => b.time);
+    return () => { cancelled = true; fpInstance.current?.destroy(); };
+  }, [breaks, takenSlots]);
 
   const getAvailableTimes = () => {
     if (!selectedDate) return [];
-    const bookedTimes = getBookedTimes(selectedDate);
+    const booked = takenSlots.filter(b => b.date === selectedDate).map(b => b.time);
     const slots = getSlotsForDate(strToDate(selectedDate));
-    return TIMES.map(t => ({
-      time: t,
-      available: slots.includes(t) && !bookedTimes.includes(t),
-      hidden: !slots.includes(t),
-    }));
+    return TIMES.filter(t => slots.includes(t)).map(t => ({ time: t, available: !booked.includes(t) }));
   };
 
-  const NAIL_LENGTH_PRICES = { short: 0, medium: 2.5, long: 5, xlong: 7.5 };
-
-  const totalRaw = Object.entries(selected).reduce((sum, [name, count]) => {
-    const svc = [...SERVICES, ...ADDONS].find(s => s.name === name);
+  const subtotal = Object.entries(selected).reduce((sum, [n, count]) => {
+    const svc = ALL_ITEMS.find(s => s.name === n);
     return sum + (svc ? svc.price * count : 0);
   }, 0) + (nailLength ? NAIL_LENGTH_PRICES[nailLength] : 0);
-
-  const totalPrice = Math.max(0, totalRaw - giftDiscount);
+  const discount = giftValid ? Math.min(giftAmount, subtotal) : 0;
+  const totalPrice = Math.max(0, subtotal - discount);
 
   const handleInspoSelect = (inspo) => {
     if (!inspo) {
@@ -239,28 +185,17 @@ export default function Book() {
       return;
     }
     setSelectedInspoId(inspo.id);
-
-    // Auto-select services
     const newSelected = {};
-    [...SERVICES, ...ADDONS].forEach(svc => {
-      if (inspo.autoServices?.includes(svc.name) || inspo.autoAddons?.includes(svc.name)) {
-        newSelected[svc.name] = 1;
-      }
+    ALL_ITEMS.forEach(svc => {
+      if (inspo.autoServices?.includes(svc.name) || inspo.autoAddons?.includes(svc.name)) newSelected[svc.name] = 1;
     });
     setSelected(prev => ({ ...prev, ...newSelected }));
-
-    // Auto-set nail length
     if (inspo.autoLength) setNailLength(inspo.autoLength);
-
-    // Auto-set design as a URL reference (fetch & convert to blob)
     if (inspo.src) {
       fetch(inspo.src)
         .then(r => r.blob())
-        .then(blob => {
-          const file = new File([blob], `inspo-${inspo.id}.jpg`, { type: "image/jpeg" });
-          setDesignFile(file);
-        })
-        .catch(() => {}); // silently fail if image fetch fails
+        .then(blob => setDesignFile(new File([blob], `inspo-${inspo.id}.jpg`, { type: blob.type || "image/jpeg" })))
+        .catch(() => {});
     }
   };
 
@@ -270,6 +205,7 @@ export default function Book() {
       setStonePromptOpen(true);
       return;
     }
+    setFieldErrors(f => ({ ...f, services: undefined }));
     setSelected(prev => {
       const current = prev[svc.name];
       if (!current) return { ...prev, [svc.name]: 1 };
@@ -280,575 +216,376 @@ export default function Book() {
     });
   };
 
+  const closeStonePrompt = () => {
+    setStonePromptOpen(false);
+    stoneTriggerRef.current?.querySelector("button")?.focus();
+  };
+  const confirmStones = () => {
+    const qty = parseInt(stoneInput, 10);
+    if (qty > 0 && qty <= 500) {
+      setSelected(prev => ({ ...prev, "Камъни": qty }));
+      closeStonePrompt();
+    }
+  };
+
   const applyGiftCard = async () => {
     if (!giftCode) return;
-    const res = await fetch(`/api/giftcard?code=${giftCode}`);
-    const data = await res.json();
-    if (!res.ok || !data.cards?.length) { setGiftFeedback("❌ Невалиден код"); return; }
-    const card = data.cards.find(c => c.code === giftCode.toUpperCase());
-    if (!card) { setGiftFeedback("❌ Невалиден код"); return; }
-    if (card.used) { setGiftFeedback("❌ Тази карта вече е използвана"); return; }
-    setGiftDiscount(card.amount);
-    setGiftValid(true);
-    setGiftFeedback(`✅ Приложена отстъпка: ${card.amount}€`);
+    setGiftChecking(true);
+    try {
+      const res = await fetch(`/api/giftcard?code=${encodeURIComponent(giftCode)}`);
+      const data = await res.json();
+      if (res.status === 429) setGiftFeedback("Твърде много опити. Опитай пак след малко.");
+      else if (data.used) setGiftFeedback("Тази карта вече е използвана.");
+      else if (!res.ok || !data.valid) setGiftFeedback("Невалиден код.");
+      else {
+        setGiftAmount(data.amount);
+        setGiftValid(true);
+        setGiftFeedback(`Приложена отстъпка: ${data.amount}€`);
+      }
+    } catch {
+      setGiftFeedback("Неуспешна проверка. Опитай отново.");
+    } finally {
+      setGiftChecking(false);
+    }
   };
 
-  const handleSubmit = async () => {
+  const [errorTick, setErrorTick] = useState(0);
+  const showError = (msg, fields = {}) => {
+    setError(msg);
+    setFieldErrors(fields);
+    setErrorTick(t => t + 1);
+  };
+  // Move focus to the error summary after it renders, so screen readers announce it.
+  useEffect(() => {
+    if (errorTick) errorRef.current?.focus();
+  }, [errorTick]);
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    if (loading) return;
     setError("");
-    const now = new Date();
-    let activeBookings = JSON.parse(localStorage.getItem("pavBookings") || "[]").filter(b => {
-      const [d, m, y] = b.date.split(".");
-      const [hh, mm] = b.time.split(":");
-      return new Date(y, m - 1, d, hh, mm) > now;
-    });
-    if (activeBookings.length >= 3) {
-      setError("❌ Вече имаш 3 запазени часа напред. Можеш да запазиш нов след като мине някой от тях.");
-      return;
-    }
-    const selectedServices = Object.keys(selected);
-    if (!name || !phone || !email || !selectedDate || !selectedTime || selectedServices.length === 0) {
-      setError("❌ Моля, попълнете всички задължителни полета.");
-      return;
-    }
-    const [bd, bm, by] = selectedDate.split(".").map(Number);
-    const bookingDate = new Date(by, bm - 1, bd);
-    const earliest = new Date();
-    earliest.setHours(0, 0, 0, 0);
-    earliest.setDate(earliest.getDate() + 3);
-    if (bookingDate < earliest) {
-      setError("❌ Трябва да запазите час поне 3 дни предварително.");
-      return;
-    }
+    const mine = readMyBookings();
+    if (mine.length >= MAX_ACTIVE_BOOKINGS) return showError(LIMIT_MSG);
+
+    const errs = {};
+    if (name.trim().length < 2) errs.name = "Въведи име.";
+    if (!/^\+?[0-9 ()\-]{6,20}$/.test(phone.trim())) errs.phone = "Въведи валиден телефон.";
+    if (!/^\S+@\S+\.\S{2,}$/.test(email.trim())) errs.email = "Въведи валиден имейл.";
+    if (Object.keys(selected).length === 0) errs.services = "Избери поне една услуга.";
+    if (!selectedDate || !selectedTime) errs.date = "Избери дата и час.";
+    if (!consent) errs.consent = "Нужно е съгласие за обработка на данните.";
+    if (Object.keys(errs).length) return showError("Провери отбелязаните полета.", errs);
+
     setLoading(true);
-    if (giftValid && giftCode) {
-      await fetch("/api/giftcard", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: giftCode }),
-      });
-    }
     const formData = new FormData();
-    formData.append("name", name);
-    formData.append("phone", phone);
-    formData.append("email", email);
-    formData.append("services", JSON.stringify(selectedServices));
+    formData.append("name", name.trim());
+    formData.append("phone", phone.trim());
+    formData.append("email", email.trim());
+    formData.append("services", JSON.stringify(selected));
     formData.append("date", selectedDate);
     formData.append("time", selectedTime);
-    formData.append("totalPrice", totalPrice.toFixed(2));
+    formData.append("consent", String(consent));
+    formData.append("website", website);
+    if (giftValid && giftCode) formData.append("giftCode", giftCode);
     if (nailLength) formData.append("nailLength", nailLength);
     if (designFile) formData.append("design", designFile);
-    const res = await fetch("/api/book", { method: "POST", body: formData });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      activeBookings.push({ id: data.id, date: selectedDate, time: selectedTime });
-      localStorage.setItem("pavBookings", JSON.stringify(activeBookings));
-      localStorage.setItem("pavBookingPhone", phone);
-      if (data.stamps) localStorage.setItem("pavStamps", JSON.stringify(data.stamps));
-      window.location.href = "/already-booked?success=true";
-    } else if (data?.error === "ALREADY_BOOKED") {
-      setError("❌ Този час вече е зает. Моля, избери друг.");
-    } else {
-      setError(`❌ ${data.error || "Грешка при запазването"}`);
+
+    try {
+      const res = await fetch("/api/book", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.id) {
+        try {
+          localStorage.setItem("pavBookings", JSON.stringify([
+            ...mine,
+            { id: data.id, date: data.date, time: data.time, token: data.cancelToken },
+          ]));
+        } catch {}
+        window.location.href = `/already-booked?success=true&id=${encodeURIComponent(data.id)}`;
+        return;
+      }
+      setLoading(false);
+      if (data.error === "ALREADY_BOOKED") {
+        setTakenSlots(s => [...s, { date: selectedDate, time: selectedTime }]);
+        setSelectedTime("");
+        showError("Този час току-що беше зает. Моля, избери друг.", { date: "Избери друг час." });
+      } else if (data.error === "GIFT_USED" || data.error === "GIFT_INVALID") {
+        setGiftValid(false);
+        setGiftAmount(0);
+        showError(data.message, { giftCode: data.message });
+      } else {
+        showError(data.message || "Грешка при запазването. Опитай отново.", data.fields || {});
+      }
+    } catch {
+      setLoading(false);
+      showError("Няма връзка. Провери интернета и опитай отново.");
     }
   };
 
-  const NAIL_LENGTHS = [
-    { key: "short",  label: "Къси",    range: "0–2",  magnets: 2,  nailH: 22,  price: "Базова", extra: 0   },
-    { key: "medium", label: "Средни",  range: "3–4",  magnets: 4,  nailH: 38,  price: "+2.5€",  extra: 2.5 },
-    { key: "long",   label: "Дълги",   range: "5–7",  magnets: 6,  nailH: 58,  price: "+5€",    extra: 5   },
-    { key: "xlong",  label: "X-Дълги", range: "8–10", magnets: 9,  nailH: 80,  price: "+7.5€",  extra: 7.5 },
-  ];
-
-  const NailLengthPicker = ({ value, onChange }) => {
-    const [hovered, setHovered] = useState(null);
-    const active = hovered || value;
-    const activeData = NAIL_LENGTHS.find(n => n.key === active) || NAIL_LENGTHS[0];
-    const nailH = activeData.nailH;
-
-    return (
-      <>
-        <style>{`
-          .nlp-wrap { margin-bottom: 1rem; }
-
-          .nlp-scene {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 40px;
-            background: linear-gradient(160deg, #fdfaf8, #faf3ee);
-            border-radius: 20px;
-            padding: 24px 16px 20px;
-            margin-bottom: 14px;
-            border: 1.5px solid rgba(220,190,170,0.3);
-            min-height: 150px;
-            position: relative;
-            overflow: hidden;
-          }
-          .nlp-scene::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(200,170,150,0.2), transparent);
-          }
-
-          /* Nail only — no finger */
-          .nlp-nail-only {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end;
-          }
-          .nlp-nail-shape {
-            width: 42px;
-            border-radius: 50% 50% 6px 6px;
-            /* Nude / natural nail color */
-            background: linear-gradient(160deg, #f5e6d8, #e8d0bc, #dfc4aa);
-            box-shadow:
-              inset -2px -3px 6px rgba(0,0,0,0.06),
-              inset 1px 1px 4px rgba(255,255,255,0.5),
-              0 4px 16px rgba(180,140,110,0.2);
-            transition: height 0.5s cubic-bezier(0.34,1.56,0.64,1);
-            position: relative;
-          }
-          /* Shine highlight */
-          .nlp-nail-shape::before {
-            content: '';
-            position: absolute;
-            top: 8px; left: 7px;
-            width: 10px; height: 18px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.45), transparent);
-            border-radius: 50%;
-            transform: rotate(-12deg);
-          }
-          /* Subtle cuticle base line */
-          .nlp-nail-base {
-            width: 44px;
-            height: 6px;
-            background: linear-gradient(180deg, #e0c8b0, #d4b89a);
-            border-radius: 0 0 6px 6px;
-            margin-top: -1px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-          }
-
-          /* MAGNETS */
-          .nlp-magnets {
-            display: flex;
-            flex-direction: column-reverse;
-            align-items: center;
-            gap: 3px;
-            padding-bottom: 4px;
-          }
-          .nlp-magnet {
-            width: 34px;
-            height: 13px;
-            border-radius: 4px;
-            background: linear-gradient(135deg, #d8d0c8, #b0a898);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.35);
-            animation: magnetDrop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
-          }
-          @keyframes magnetDrop {
-            from { opacity:0; transform:translateY(-8px) scale(0.85); }
-            to   { opacity:1; transform:translateY(0)    scale(1); }
-          }
-
-          /* Info panel */
-          .nlp-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: flex-end;
-            padding-bottom: 4px;
-            min-width: 90px;
-          }
-          .nlp-info-mm   { font-size:0.68rem; color:#b8a898; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
-          .nlp-info-range {
-            font-size: 2rem;
-            font-family: 'Cormorant Garamond', serif;
-            font-weight: 600;
-            color: #8b6f5e;
-            line-height: 1;
-            transition: all 0.25s;
-          }
-          .nlp-info-label { font-size:0.95rem; font-weight:700; color:#6b5244; margin: 3px 0 2px; }
-          .nlp-info-price {
-            font-size: 0.82rem; font-weight: 600;
-            background: linear-gradient(135deg, #c9956e, #e0a882);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-          }
-
-          /* Selector buttons */
-          .nlp-buttons { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-          .nlp-btn {
-            padding: 0.6rem 0.4rem;
-            border-radius: 14px;
-            border: 2px solid rgba(220,190,160,0.35);
-            background: #fdfaf8;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: 'DM Sans', sans-serif;
-            text-align: center;
-            outline: none;
-          }
-          .nlp-btn:hover { border-color: #d4a882; background: #fdf4ee; transform: translateY(-2px); }
-          .nlp-btn.selected {
-            border-color: #c9956e;
-            background: linear-gradient(135deg, #fdf0e8, #fae0cc);
-            box-shadow: 0 4px 14px rgba(200,140,100,0.2);
-            transform: translateY(-3px);
-          }
-          .nlp-btn-label { font-size:0.78rem; font-weight:700; color:#6b5244; display:block; }
-          .nlp-btn-range { font-size:0.66rem; color:#b8a898; display:block; margin:1px 0; }
-          .nlp-btn-price { font-size:0.7rem; font-weight:600; color:#c9956e; display:block; }
-          .nlp-hint { text-align:center; font-size:0.78rem; color:#c0a898; margin-top:8px; }
-        `}</style>
-
-        <div className="nlp-wrap">
-          <div className="nlp-scene">
-            {/* Nail only */}
-            <div className="nlp-nail-only">
-              <div className="nlp-nail-shape" style={{ height: nailH }} />
-              <div className="nlp-nail-base" />
-            </div>
-
-            {/* Stacked magnets */}
-            <div className="nlp-magnets">
-              {Array.from({ length: activeData.magnets }).map((_, i) => (
-                <div key={i} className="nlp-magnet" style={{ animationDelay: `${i * 0.05}s` }} />
-              ))}
-            </div>
-
-            {/* Info */}
-            <div className="nlp-info">
-              <div className="nlp-info-mm">мм</div>
-              <div className="nlp-info-range">{activeData.range}</div>
-              <div className="nlp-info-label">{activeData.label}</div>
-              <div className="nlp-info-price">{activeData.price}</div>
-            </div>
-          </div>
-
-          <div className="nlp-buttons">
-            {NAIL_LENGTHS.map(n => (
-              <button
-                key={n.key}
-                type="button"
-                className={`nlp-btn ${value === n.key ? "selected" : ""}`}
-                onClick={() => onChange(value === n.key ? null : n.key)}
-                onMouseEnter={() => setHovered(n.key)}
-                onMouseLeave={() => setHovered(null)}
-              >
-                <span className="nlp-btn-label">{n.label}</span>
-                <span className="nlp-btn-range">{n.range}mm</span>
-                <span className="nlp-btn-price">{n.price}</span>
-              </button>
-            ))}
-          </div>
-          {!value && <p className="nlp-hint">✨ Избери дължина за да видиш цената</p>}
-        </div>
-      </>
-    );
+  const joinWaitlist = async () => {
+    setWaitlistError("");
+    if (!name.trim() || !phone.trim() || !email.trim()) {
+      setWaitlistError("Попълни име, телефон и имейл.");
+      return;
+    }
+    setWaitlistLoading(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone, email, date: selectedDate, time: waitlistTime, website }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setWaitlistDone(true);
+      else setWaitlistError(data.message || "Неуспешно записване. Опитай отново.");
+    } catch {
+      setWaitlistError("Няма връзка. Опитай отново.");
+    } finally {
+      setWaitlistLoading(false);
+    }
   };
 
-  const ServiceChip = ({ svc }) => {
-    const count = selected[svc.name] || 0;
-    const active = count > 0;
-    const [showTip, setShowTip] = useState(false);
-    const isDisabled =
-      (svc.name === "Гел - къси нокти"  && (nailLength === "long"  || nailLength === "xlong")) ||
-      (svc.name === "Гел - дълги нокти" && (nailLength === "short" || nailLength === "medium"));
-    return (
-      <div style={{ position: "relative", display: "inline-block" }}>
-        {/* Tooltip */}
-        {showTip && !isDisabled && !active && (
-          <div style={{
-            position: "absolute",
-            bottom: "calc(100% + 8px)",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "linear-gradient(135deg, #2d1f26, #3d2535)",
-            color: "#fff",
-            padding: "6px 12px",
-            borderRadius: "10px",
-            fontSize: "0.78rem",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            zIndex: 50,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-            animation: "tipFadeIn 0.15s ease",
-          }}>
-            {svc.countable ? `${svc.price}€ / бр.` : `${svc.price}€`}
-            {/* Arrow */}
-            <div style={{
-              position: "absolute",
-              top: "100%", left: "50%",
-              transform: "translateX(-50%)",
-              borderLeft: "5px solid transparent",
-              borderRight: "5px solid transparent",
-              borderTop: "5px solid #3d2535",
-            }} />
-          </div>
-        )}
-        <button
-          className={`chip ${active ? "chip-active" : ""} ${isDisabled ? "chip-disabled" : ""}`}
-          onClick={() => !isDisabled && toggleService(svc)}
-          type="button"
-          title={isDisabled ? "Не е съвместимо с избраната дължина" : ""}
-          disabled={isDisabled}
-          onMouseEnter={() => setShowTip(true)}
-          onMouseLeave={() => setShowTip(false)}
-        >
-          {svc.icon && <span className="chip-icon">{svc.icon}</span>}
-          <span className="chip-name">{svc.name}</span>
-          {active && svc.countable && <span className="chip-count">{count}</span>}
-          {active && <span className="chip-price">{svc.price}€</span>}
-          <style jsx>{`
-            @keyframes tipFadeIn { from { opacity:0; transform:translateX(-50%) translateY(4px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
-            .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0.5rem 0.9rem; border-radius: 50px; border: 1.5px solid rgba(249,161,194,0.4); background: #fff; color: var(--text-mid); font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
-            .chip:hover:not(:disabled) { border-color: var(--pink-mid); transform: translateY(-2px); background: #fff0f6; }
-            .chip-active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(255,110,196,0.3); }
-            .chip-disabled { opacity: 0.35; cursor: not-allowed; background: #f5f5f5; border-color: #e0e0e0; text-decoration: line-through; }
-            .chip-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
-            .chip-name { line-height: 1.2; }
-            .chip-count { background: rgba(255,255,255,0.3); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
-            .chip-price { font-size: 0.8rem; opacity: 0.9; }
-          `}</style>
-        </button>
-      </div>
-    );
-  };
+  const isChipDisabled = (svc) =>
+    (svc.name === "Гел - къси нокти" && (nailLength === "long" || nailLength === "xlong")) ||
+    (svc.name === "Гел - дълги нокти" && (nailLength === "short" || nailLength === "medium"));
+
+  const fe = fieldErrors;
+  const describedBy = (k) => (fe[k] ? `${k}-error` : undefined);
 
   return (
     <>
       <Head>
-        <title>Book Now – PavNailedIt</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+        <title>Запази час – PavNailedIt</title>
+        <meta name="description" content="Запази час за маникюр в PavNailedIt, Пловдив — избери дизайн, дължина, дата и час." />
         <style>{`
           .flatpickr-day.day-partial {
             background: linear-gradient(135deg, #efefef 50%, #fff0f6 50%) !important;
             border-color: rgba(249,161,194,0.35) !important;
-          }
-          .flatpickr-day.day-partial:hover {
-            background: linear-gradient(135deg, #e4e4e4 50%, #ffe4f2 50%) !important;
           }
         `}</style>
       </Head>
 
       <style jsx>{`
         .page { min-height: 100vh; background: var(--bg); padding: 2rem 1rem 4rem; }
-        .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.5rem; transition: color 0.2s; }
-        .back-link:hover { color: var(--pink-deep); }
+        :global(.back-link) { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; color: var(--text-light); font-size: 0.95rem; margin-bottom: 1rem; transition: color 0.2s; }
+        :global(.back-link):hover { color: var(--pink-deep); }
         h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 300; text-align: center; color: var(--text-dark); margin-bottom: 2.5rem; letter-spacing: -0.5px; }
-        h1 em { color: var(--pink-deep); font-style: italic; }
         .form-card { max-width: 620px; margin: 0 auto; background: #fff; border-radius: 28px; padding: 2.5rem; box-shadow: 0 20px 60px rgba(249,161,194,0.15); border: 1px solid rgba(249,161,194,0.15); }
+        @media (max-width: 480px) { .form-card { padding: 1.5rem 1.1rem; border-radius: 22px; } }
         .field { margin-bottom: 1.5rem; }
-        label { display: block; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-light); margin-bottom: 0.5rem; }
-        input[type=text], input[type=tel], input[type=email], input[type=file] { width: 100%; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid rgba(249,161,194,0.3); background: #fdf8fa; font-size: 0.95rem; color: var(--text-dark); outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: 'DM Sans', sans-serif; }
-        input:focus { border-color: var(--pink-mid); box-shadow: 0 0 0 3px rgba(249,161,194,0.15); background: #fff; }
-        /* nail length picker styles injected via component */
+        label, .label { display: block; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-mid); margin-bottom: 0.5rem; }
+        .req { color: var(--accent); }
+        .control { width: 100%; min-height: 48px; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid rgba(176,128,151,0.45); background: #fdf8fa; font-size: 1rem; color: var(--text-dark); transition: border-color 0.2s, box-shadow 0.2s; font-family: 'DM Sans', sans-serif; }
+        .control:focus { border-color: var(--pink-deep); box-shadow: 0 0 0 3px rgba(194,24,91,0.18); background: #fff; outline: none; }
+        .control[aria-invalid="true"] { border-color: #c53030; }
+        .field-error { color: #c53030; font-size: 0.85rem; margin-top: 0.4rem; }
+        .hint { font-size: 0.85rem; color: var(--text-light); margin: -0.25rem 0 0.75rem; }
         .chips-wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .section-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--pink-deep); margin-bottom: 0.75rem; display: block; }
-        .divider { border: none; border-top: 1px solid rgba(249,161,194,0.2); margin: 1.5rem 0; }
+        .section-label { font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; display: block; }
+        .divider { border: none; border-top: 1px solid rgba(249,161,194,0.25); margin: 1.5rem 0; }
         .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
-        .time-btn { padding: 0.8rem; border-radius: 14px; border: 1.5px solid rgba(249,161,194,0.3); background: #fdf8fa; font-size: 0.95rem; font-weight: 600; color: var(--text-mid); cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
-        .time-btn:hover:not(:disabled) { border-color: var(--pink-mid); background: #fff0f6; }
-        .time-btn.active { background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(255,110,196,0.35); }
-        .time-btn:disabled { opacity: 0.75; cursor: pointer; }
-        .time-btn.booked { background: #fdf0f5; border-color: rgba(249,161,194,0.2); color: #d4a0bc; font-size: 0.78rem; }
-        .time-btn.booked:hover { background: #fff0f8; border-color: rgba(249,161,194,0.4); color: #c94090; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+        .time-btn { min-height: 52px; padding: 0.6rem; border-radius: 14px; border: 1.5px solid rgba(176,128,151,0.4); background: #fdf8fa; font-size: 1rem; font-weight: 600; color: var(--text-mid); cursor: pointer; transition: border-color 0.2s, background 0.2s; font-family: 'DM Sans', sans-serif; }
+        .time-btn:hover { border-color: var(--pink-deep); background: #fff0f6; }
+        .time-btn.active { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(194,24,91,0.3); }
+        .time-btn.booked { background: #fdf0f5; border-style: dashed; color: var(--text-mid); font-size: 0.85rem; }
+        .time-sub { display: block; font-size: 0.72rem; font-weight: 500; }
+        .waitlist-box { margin-top: 1rem; background: linear-gradient(135deg,#fff5fb,#ffe8f4); border-radius: 16px; padding: 1.25rem; border: 1.5px solid rgba(249,161,194,0.35); }
+        .waitlist-box h3 { font-family: 'DM Sans', sans-serif; margin: 0 0 0.4rem; font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+        .waitlist-box p { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--text-mid); }
+        .stack { display: flex; flex-direction: column; gap: 8px; }
+        .success-box { margin-top: 1rem; background: #f0fff4; border-radius: 16px; padding: 1.25rem; border: 1.5px solid rgba(72,187,120,0.35); text-align: center; color: #22543d; }
         .gift-row { display: flex; gap: 0.75rem; align-items: center; }
-        .gift-row input { flex: 1; }
-        .gift-btn { white-space: nowrap; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid var(--pink-mid); background: #fff; color: var(--pink-deep); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.25s; font-family: 'DM Sans', sans-serif; }
-        .gift-btn:hover { background: var(--pink-light); }
-        .gift-feedback { font-size: 0.9rem; font-weight: 500; color: var(--pink-deep); margin-top: 0.5rem; }
+        .gift-row .control { flex: 1; }
+        .btn-secondary { white-space: nowrap; min-height: 48px; padding: 0.8rem 1.2rem; border-radius: 14px; border: 1.5px solid var(--accent); background: #fff; color: var(--accent); font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.2s; font-family: 'DM Sans', sans-serif; }
+        .btn-secondary:hover:not(:disabled) { background: var(--pink-light); }
+        .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .gift-feedback { font-size: 0.9rem; font-weight: 500; color: var(--text-mid); margin-top: 0.5rem; }
+        .consent { display: flex; gap: 0.7rem; align-items: flex-start; font-size: 0.9rem; color: var(--text-mid); text-transform: none; letter-spacing: 0; font-weight: 400; }
+        .consent input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; }
+        .consent :global(a) { color: var(--accent); text-decoration: underline; }
         .total { background: linear-gradient(135deg, #fff0f6, #fde8f0); border-radius: 16px; padding: 1.2rem 1.5rem; text-align: center; margin: 1.5rem 0; border: 1.5px solid rgba(249,161,194,0.3); }
-        .total-amount { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; color: var(--pink-deep); }
-        .total-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-light); margin-bottom: 0.25rem; }
-        .submit-btn { width: 100%; padding: 1.1rem; border: none; border-radius: 50px; background: linear-gradient(135deg, #f8b7d1, #ff6ec4); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 25px rgba(255,110,196,0.4); font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px; }
-        .submit-btn:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 12px 35px rgba(255,110,196,0.55); }
-        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .error { color: #e53e3e; font-size: 0.9rem; background: #fff5f5; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 1rem; }
+        .total-amount { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; color: var(--accent); }
+        .total-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-mid); margin-bottom: 0.25rem; }
+        .total-note { font-size: 0.85rem; color: var(--text-mid); margin-top: 4px; }
+        .submit-btn { width: 100%; min-height: 56px; padding: 1.1rem; border: none; border-radius: 50px; background: var(--accent); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.2s var(--ease-out); box-shadow: 0 8px 25px rgba(194,24,91,0.3); font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px; }
+        .submit-btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-2px); }
+        .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+        .error { color: #9b2c2c; font-size: 0.95rem; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 1rem; }
+        .error:focus { outline: 2px solid #c53030; outline-offset: 2px; }
+        .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal { background: #fff; border-radius: 20px; padding: 2rem; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: var(--text-dark); margin: 0 0 0.4rem; }
+        .modal p { font-size: 0.9rem; color: var(--text-mid); margin: 0 0 1rem; }
+        .modal-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .modal-actions button { flex: 1; min-height: 48px; border-radius: 12px; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.95rem; }
+        .btn-ghost { border: 1.5px solid rgba(176,128,151,0.45); background: #fff; color: var(--text-mid); }
+        .btn-primary { border: none; background: var(--accent); color: #fff; }
       `}</style>
 
       {stonePromptOpen && (
-        <div
-          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
-          onClick={() => setStonePromptOpen(false)}
-        >
+        <div className="modal-backdrop" onClick={closeStonePrompt}>
           <div
-            style={{background:"#fff",borderRadius:"20px",padding:"2rem",maxWidth:"320px",width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stones-title"
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => { if (e.key === "Escape") closeStonePrompt(); }}
           >
-            <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",color:"#3d2535",margin:"0 0 0.4rem"}}>💎 Камъни</h3>
-            <p style={{fontSize:"0.85rem",color:"#b8a898",margin:"0 0 1rem"}}>Колко камъни желаеш? (0.20€ / бр.)</p>
+            <h2 id="stones-title">Камъни</h2>
+            <p id="stones-desc">Колко камъни желаеш? (0.20€ / бр.)</p>
+            <label htmlFor="stones-qty" className="label">Брой</label>
             <input
+              id="stones-qty"
+              className="control"
               type="number"
+              inputMode="numeric"
               min="1"
               max="500"
               value={stoneInput}
               onChange={e => setStoneInput(e.target.value)}
               placeholder="напр. 5"
+              aria-describedby="stones-desc"
               autoFocus
-              style={{width:"100%",padding:"0.75rem 1rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.4)",fontSize:"1rem",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
-              onKeyDown={e => {
-                if (e.key === "Enter") {
-                  const qty = parseInt(stoneInput);
-                  if (qty > 0) { setSelected(prev => ({...prev, "Камъни": qty})); setStonePromptOpen(false); }
-                }
-                if (e.key === "Escape") setStonePromptOpen(false);
-              }}
+              onKeyDown={e => { if (e.key === "Enter") confirmStones(); }}
             />
-            <div style={{display:"flex",gap:"0.75rem",marginTop:"1rem"}}>
-              <button type="button" onClick={() => {
-                setSelected(prev => { const n = {...prev}; delete n["Камъни"]; return n; });
-                setStonePromptOpen(false);
-              }} style={{flex:1,padding:"0.75rem",borderRadius:"12px",border:"1.5px solid rgba(249,161,194,0.3)",background:"#fff",color:"#b8a898",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                Премахни
-              </button>
-              <button type="button" onClick={() => {
-                const qty = parseInt(stoneInput);
-                if (qty > 0) { setSelected(prev => ({...prev, "Камъни": qty})); setStonePromptOpen(false); }
-              }} style={{flex:1,padding:"0.75rem",borderRadius:"12px",border:"none",background:"linear-gradient(135deg,#f8b7d1,#ff6ec4)",color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                Потвърди
-              </button>
+            <div className="modal-actions">
+              <button type="button" className="btn-ghost" onClick={() => {
+                setSelected(prev => { const n = { ...prev }; delete n["Камъни"]; return n; });
+                closeStonePrompt();
+              }}>Премахни</button>
+              <button type="button" className="btn-primary" onClick={confirmStones}>Потвърди</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="page">
-        <div style={{maxWidth: '620px', margin: '0 auto'}}>
+      <main className="page">
+        <div style={{ maxWidth: "620px", margin: "0 auto" }}>
           <Link href="/" className="back-link">← Назад</Link>
         </div>
-        <h1>Запази час <em>💅🏻</em></h1>
+        <h1>Запази час</h1>
 
-        <div className="form-card">
-          {error && <div className="error">{error}</div>}
+        <form className="form-card" onSubmit={handleSubmit} noValidate>
+          {error && (
+            <div className="error" role="alert" tabIndex={-1} ref={errorRef}>{error}</div>
+          )}
 
-          <div className="field">
-            <label>Пълно Име</label>
-            <input type="text" placeholder="Павлина Иванова" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Телефон</label>
-            <input type="tel" placeholder="+359 88 123 4567" value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Имейл</label>
-            <input type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+          {/* Honeypot — hidden from people and screen readers */}
+          <div className="hp" aria-hidden="true">
+            <label htmlFor="website">Website</label>
+            <input id="website" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} />
           </div>
 
-          <hr className="divider" />
+          <div className="field">
+            <label htmlFor="name">Име и фамилия <span className="req" aria-hidden="true">*</span></label>
+            <input id="name" name="name" className="control" type="text" autoComplete="name" required
+              placeholder="Име Фамилия" value={name} onChange={e => setName(e.target.value)}
+              aria-invalid={!!fe.name} aria-describedby={describedBy("name")} />
+            {fe.name && <p className="field-error" id="name-error">{fe.name}</p>}
+          </div>
+          <div className="field">
+            <label htmlFor="phone">Телефон <span className="req" aria-hidden="true">*</span></label>
+            <input id="phone" name="phone" className="control" type="tel" autoComplete="tel" inputMode="tel" required
+              placeholder="+359 88 123 4567" value={phone} onChange={e => setPhone(e.target.value)}
+              aria-invalid={!!fe.phone} aria-describedby={describedBy("phone")} />
+            {fe.phone && <p className="field-error" id="phone-error">{fe.phone}</p>}
+          </div>
+          <div className="field">
+            <label htmlFor="email">Имейл <span className="req" aria-hidden="true">*</span></label>
+            <input id="email" name="email" className="control" type="email" autoComplete="email" required
+              placeholder="ime@example.com" value={email} onChange={e => setEmail(e.target.value)}
+              aria-invalid={!!fe.email} aria-describedby={describedBy("email")} />
+            {fe.email && <p className="field-error" id="email-error">{fe.email}</p>}
+          </div>
 
-          {/* Inspo Gallery */}
-          <span className="section-label">✨ Избери дизайн от инспирации</span>
-          <p style={{fontSize:"0.82rem",color:"#c994b0",marginBottom:"0.75rem",marginTop:"-0.5rem"}}>
-            Избери любим дизайн — услугите и дължината се избират автоматично 🪄
-          </p>
           <InspoGallery onSelect={handleInspoSelect} selectedId={selectedInspoId} />
 
           <hr className="divider" />
 
-          <span className="section-label">Дължина на ноктите</span>
+          <span className="section-label" id="length-label">Дължина на ноктите</span>
           <NailLengthPicker value={nailLength} onChange={setNailLength} />
 
           <hr className="divider" />
 
-          <span className="section-label">Основни услуги</span>
-          <div className="chips-wrap">
-            {SERVICES.map(svc => <ServiceChip key={svc.name} svc={svc} />)}
-          </div>
+          <fieldset style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={describedBy("services")}>
+            <legend className="section-label">Основни услуги <span className="req" aria-hidden="true">*</span></legend>
+            <div className="chips-wrap">
+              {SERVICES.map(svc => (
+                <span key={svc.name} ref={svc.name === "Камъни" ? stoneTriggerRef : undefined} style={{ display: "inline-flex" }}>
+                  <ServiceChip svc={svc} count={selected[svc.name] || 0} disabled={isChipDisabled(svc)} onToggle={toggleService} />
+                </span>
+              ))}
+            </div>
+            {fe.services && <p className="field-error" id="services-error">{fe.services}</p>}
+          </fieldset>
 
-          <br />
-          <span className="section-label">Декорации</span>
-          <div className="chips-wrap">
-            {ADDONS.map(svc => <ServiceChip key={svc.name} svc={svc} />)}
-          </div>
+          <fieldset style={{ border: 0, padding: 0, margin: "1.5rem 0 0" }}>
+            <legend className="section-label">Декорации</legend>
+            <div className="chips-wrap">
+              {ADDONS.map(svc => (
+                <ServiceChip key={svc.name} svc={svc} count={selected[svc.name] || 0} disabled={false} onToggle={toggleService} />
+              ))}
+            </div>
+          </fieldset>
 
           <hr className="divider" />
 
           <div className="field">
-            <label>Дата</label>
-            <input type="text" ref={flatpickrRef} placeholder="Избери дата" readOnly />
+            <label htmlFor="date">Дата <span className="req" aria-hidden="true">*</span></label>
+            <input id="date" className="control" type="text" ref={flatpickrRef} placeholder="Избери дата" readOnly
+              aria-invalid={!!fe.date} aria-describedby={describedBy("date")} />
+            {fe.date && <p className="field-error" id="date-error">{fe.date}</p>}
           </div>
 
           {selectedDate && (
             <div className="field">
-              <label>Час</label>
-              <div className="time-grid">
-                {getAvailableTimes().map(({ time, available, hidden }) => !hidden && (
+              <span className="label" id="time-label">Час</span>
+              <div className="time-grid" role="group" aria-labelledby="time-label">
+                {getAvailableTimes().map(({ time, available }) => (
                   <button
                     key={time}
                     type="button"
                     className={`time-btn ${selectedTime === time ? "active" : ""} ${!available ? "booked" : ""}`}
-                    disabled={!available}
+                    aria-pressed={available ? selectedTime === time : waitlistTime === time}
+                    aria-label={available ? time : `${time} – зает, запиши се в чакащия списък`}
                     onClick={() => {
                       if (available) {
                         setSelectedTime(time);
                         setWaitlistTime(null);
-                        setWaitlistDone(false);
+                        setFieldErrors(f => ({ ...f, date: undefined }));
                       } else {
                         setWaitlistTime(waitlistTime === time ? null : time);
-                        setWaitlistDone(false);
                       }
+                      setWaitlistDone(false);
+                      setWaitlistError("");
                     }}
                   >
-                    {available ? time : (
-                      <span>
-                        <span style={{display:"block",fontSize:"0.8rem"}}>{time}</span>
-                        <span style={{fontSize:"0.65rem",opacity:0.75}}>📋 чакай</span>
-                      </span>
-                    )}
+                    {available ? time : (<>{time}<span className="time-sub">зает · чакащ списък</span></>)}
                   </button>
                 ))}
               </div>
 
-              {/* Waitlist join form */}
               {waitlistTime && !waitlistDone && (
-                <div style={{marginTop:"1rem",background:"linear-gradient(135deg,#fff5fb,#ffe8f4)",borderRadius:"16px",padding:"1.25rem",border:"1.5px solid rgba(249,161,194,0.3)",animation:"fadeIn 0.3s ease"}}>
-                  <p style={{margin:"0 0 0.75rem",fontSize:"0.85rem",fontWeight:700,color:"#c94090"}}>
-                    📋 Запиши се в чакащия списък за {waitlistTime}
-                  </p>
-                  <p style={{margin:"0 0 0.75rem",fontSize:"0.78rem",color:"#c994b0"}}>
-                    Ако някой отмени — ще те уведомим веднага по имейл 💌
-                  </p>
-                  <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-                    <input type="text"    placeholder="Твоето име"    value={name}  onChange={e=>setName(e.target.value)}  style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
-                    <input type="tel"     placeholder="+359 88..."    value={phone} onChange={e=>setPhone(e.target.value)} style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
-                    <input type="email"   placeholder="Имейл адрес"  value={email} onChange={e=>setEmail(e.target.value)} style={{padding:"0.65rem 1rem",borderRadius:"10px",border:"1.5px solid rgba(249,161,194,0.35)",fontFamily:"inherit",fontSize:"0.9rem",outline:"none"}} />
-                    <button
-                      type="button"
-                      disabled={waitlistLoading}
-                      onClick={async () => {
-                        if (!name || !phone || !email) return;
-                        setWaitlistLoading(true);
-                        const res = await fetch("/api/waitlist", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ name, phone, email, date: selectedDate, time: waitlistTime }),
-                        });
-                        setWaitlistLoading(false);
-                        if (res.ok) {
-                          setWaitlistDone(true);
-                        }
-                      }}
-                      style={{padding:"0.75rem",borderRadius:"10px",background:"linear-gradient(135deg,#f8b7d1,#ff6ec4)",color:"#fff",fontWeight:700,fontSize:"0.9rem",border:"none",cursor:"pointer",fontFamily:"inherit"}}
-                    >
-                      {waitlistLoading ? "Записване..." : "Запиши се в списъка 📋"}
+                <div className="waitlist-box">
+                  <h3>Чакащ списък за {waitlistTime}</h3>
+                  <p>Ако някой отмени, ще ти пишем веднага по имейл. Ползваме името, телефона и имейла от формата по-горе.</p>
+                  <div className="stack">
+                    {(!name || !phone || !email) && (
+                      <p style={{ margin: 0 }}>Попълни първо име, телефон и имейл в началото на формата.</p>
+                    )}
+                    <button type="button" className="btn-secondary" disabled={waitlistLoading} onClick={joinWaitlist}>
+                      {waitlistLoading ? "Записване..." : "Запиши ме в списъка"}
                     </button>
+                    {waitlistError && <p className="field-error" role="alert">{waitlistError}</p>}
                   </div>
                 </div>
               )}
 
-              {/* Waitlist success */}
               {waitlistDone && (
-                <div style={{marginTop:"1rem",background:"linear-gradient(135deg,#f0fff4,#e6ffed)",borderRadius:"16px",padding:"1.25rem",border:"1.5px solid rgba(72,187,120,0.3)",textAlign:"center"}}>
-                  <div style={{fontSize:"1.8rem",marginBottom:"6px"}}>✅</div>
-                  <p style={{margin:0,fontWeight:700,color:"#276749",fontSize:"0.95rem"}}>Записана си в чакащия списък!</p>
-                  <p style={{margin:"6px 0 0",fontSize:"0.8rem",color:"#68b794"}}>Ще получиш имейл веднага щом се освободи часът 💌</p>
+                <div className="success-box" role="status">
+                  <p style={{ margin: 0, fontWeight: 700 }}>Записана си в чакащия списък!</p>
+                  <p style={{ margin: "6px 0 0", fontSize: "0.85rem" }}>Ще получиш имейл веднага щом се освободи часът.</p>
                 </div>
               )}
             </div>
@@ -857,46 +594,74 @@ export default function Book() {
           <hr className="divider" />
 
           <div className="field">
-            <label>Прикачи дизайн (по желание)</label>
+            <label htmlFor="design">Прикачи дизайн (по желание)</label>
+            <p className="hint" id="design-hint">Снимка (JPG, PNG, WEBP), до 5 MB.</p>
             <input
+              id="design"
+              className="control"
               type="file"
-              accept="image/*"
-              onChange={e => { setDesignFile(e.target.files[0]); setSelectedInspoId(null); }}
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              aria-describedby="design-hint"
+              onChange={e => {
+                const f = e.target.files[0];
+                if (f && f.size > 5 * 1024 * 1024) {
+                  setFieldErrors(x => ({ ...x, design: "Снимката е над 5 MB." }));
+                  e.target.value = "";
+                  return;
+                }
+                setFieldErrors(x => ({ ...x, design: undefined }));
+                setDesignFile(f || null);
+                setSelectedInspoId(null);
+              }}
             />
+            {fe.design && <p className="field-error">{fe.design}</p>}
           </div>
 
           <div className="field">
-            <label>Подаръчна карта</label>
+            <label htmlFor="gift">Подаръчна карта</label>
             <div className="gift-row">
               <input
+                id="gift"
+                className="control"
                 type="text"
-                placeholder="AB12C3"
+                autoComplete="off"
+                placeholder="Код от картата"
                 value={giftCode}
-                onChange={e => setGiftCode(e.target.value.toUpperCase())}
+                onChange={e => { setGiftCode(e.target.value.toUpperCase()); setGiftFeedback(""); }}
                 disabled={giftValid}
+                aria-describedby="gift-feedback"
+                aria-invalid={!!fe.giftCode}
               />
-              <button type="button" className="gift-btn" onClick={applyGiftCard} disabled={giftValid}>
-                Приложи
+              <button type="button" className="btn-secondary" onClick={applyGiftCard} disabled={giftValid || giftChecking || !giftCode}>
+                {giftChecking ? "..." : "Приложи"}
               </button>
             </div>
-            {giftFeedback && <p className="gift-feedback">{giftFeedback}</p>}
+            <p className="gift-feedback" id="gift-feedback" role="status">{giftFeedback}</p>
           </div>
 
-          <div className="total">
+          <div className="total" aria-live="polite">
             <div className="total-label">Общо</div>
             <div className="total-amount">{totalPrice.toFixed(2)} €</div>
-            {giftDiscount > 0 && (
-              <div style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '4px'}}>
-                (спестяваш {giftDiscount}€ с карта)
-              </div>
-            )}
+            {discount > 0 && <div className="total-note">(спестяваш {discount.toFixed(2)}€ с карта)</div>}
           </div>
 
-          <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Запазва се..." : "Запази час 💅"}
+          <div className="field">
+            <label className="consent" htmlFor="consent">
+              <input id="consent" type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
+                aria-invalid={!!fe.consent} aria-describedby={describedBy("consent")} />
+              <span>
+                Съгласна съм данните ми (име, телефон, имейл и качена снимка) да се използват за резервацията,
+                според <Link href="/privacy">политиката за поверителност</Link>.
+              </span>
+            </label>
+            {fe.consent && <p className="field-error" id="consent-error">{fe.consent}</p>}
+          </div>
+
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? "Запазва се..." : "Запази час"}
           </button>
-        </div>
-      </div>
+        </form>
+      </main>
     </>
   );
 }

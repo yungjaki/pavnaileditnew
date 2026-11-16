@@ -5,25 +5,30 @@ export default function SplashScreen() {
   const [fading, setFading]   = useState(false);
 
   useEffect(() => {
-    // Don't show again in same session
-    if (sessionStorage.getItem("splashSeen")) {
+    let seen = false;
+    try { seen = !!sessionStorage.getItem("splashSeen"); } catch {}
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Once per session, never for people who asked for less motion.
+    if (seen || reduced) {
       setVisible(false);
       return;
     }
-    const fadeTimer = setTimeout(() => setFading(true), 2200);
-    const hideTimer = setTimeout(() => {
-      setVisible(false);
-      sessionStorage.setItem("splashSeen", "1");
-    }, 2700);
+    try { sessionStorage.setItem("splashSeen", "1"); } catch {}
+    const fadeTimer = setTimeout(() => setFading(true), 1100);
+    const hideTimer = setTimeout(() => setVisible(false), 1500);
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, []);
+
+  const dismiss = () => {
+    setFading(true);
+    setTimeout(() => setVisible(false), 300);
+  };
 
   if (!visible) return null;
 
   return (
-    <div className={`splash ${fading ? "splash-fade" : ""}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
+    <div className={`splash ${fading ? "splash-fade" : ""}`} aria-hidden="true" onClick={dismiss}>
+      <style jsx>{`
 
         .splash {
           position: fixed;
@@ -62,7 +67,7 @@ export default function SplashScreen() {
           width: 56px;
           height: 96px;
           margin-bottom: 28px;
-          animation: bottleAppear 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+          animation: bottleAppear 0.6s cubic-bezier(0.22,1,0.36,1) forwards;
           opacity: 0;
         }
         @keyframes bottleAppear {
@@ -129,7 +134,7 @@ export default function SplashScreen() {
         .sparkle {
           position: absolute;
           font-size: 1rem;
-          animation: sparklePop 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+          animation: sparklePop 0.6s cubic-bezier(0.22,1,0.36,1) forwards;
           opacity: 0;
         }
         .sp1 { top:-10px; right:-18px; animation-delay:1.4s; font-size:0.8rem; }

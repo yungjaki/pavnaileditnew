@@ -36,14 +36,17 @@ function getTheme() {
 
 export default function FallingElements() {
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const theme = getTheme();
-    const MAX = 7;
-    const INTERVAL = 1500;
+    const MAX = 5;
+    const INTERVAL = 2000;
 
     const create = () => {
+      if (document.hidden) return;
       if (document.querySelectorAll(".fall-element").length >= MAX) return;
       const el = document.createElement("div");
       el.className = "fall-element";
+      el.setAttribute("aria-hidden", "true");
       el.textContent = theme[Math.floor(Math.random() * theme.length)];
       el.style.left = Math.random() * 100 + "vw";
       el.style.fontSize = 12 + Math.random() * 18 + "px";
@@ -53,11 +56,14 @@ export default function FallingElements() {
     };
 
     const id = setInterval(create, INTERVAL);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      document.querySelectorAll(".fall-element").forEach(el => el.remove());
+    };
   }, []);
 
   return (
-    <style>{`
+    <style jsx global>{`
       .fall-element {
         position: fixed;
         top: -50px;
