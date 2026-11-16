@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function debounce(func, wait) {
   let timeout;
@@ -217,37 +217,51 @@ async function buildApp(container, options) {
     onCheck();
   }
 
+  let visible = true;
   function update() {
     scroll.current = lerp(scroll.current, scroll.target, scroll.ease);
     const direction = scroll.current > scroll.last ? 'right' : 'left';
     medias.forEach(m => m.update(scroll, direction));
     renderer.render({ scene, camera });
     scroll.last = scroll.current;
-    raf = requestAnimationFrame(update);
+    raf = visible ? requestAnimationFrame(update) : null;
   }
 
-  window.addEventListener('resize', onResize);
-  window.addEventListener('wheel', onWheel);
-  window.addEventListener('mousedown', onTouchDown);
+  // Only react to gestures that start on the gallery itself (not the whole page),
+  // and stop rendering while it is scrolled out of view.
+  const passive = { passive: true };
+  container.addEventListener('wheel', onWheel, passive);
+  container.addEventListener('mousedown', onTouchDown);
   window.addEventListener('mousemove', onTouchMove);
   window.addEventListener('mouseup', onTouchUp);
-  window.addEventListener('touchstart', onTouchDown);
-  window.addEventListener('touchmove', onTouchMove);
+  container.addEventListener('touchstart', onTouchDown, passive);
+  container.addEventListener('touchmove', onTouchMove, passive);
   window.addEventListener('touchend', onTouchUp);
+  window.addEventListener('touchcancel', onTouchUp);
+  window.addEventListener('resize', onResize);
+
+  const io = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    if (visible && !raf) raf = requestAnimationFrame(update);
+  });
+  io.observe(container);
 
   update();
 
   return {
     destroy() {
-      cancelAnimationFrame(raf);
+      visible = false;
+      if (raf) cancelAnimationFrame(raf);
+      io.disconnect();
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('mousedown', onTouchDown);
+      container.removeEventListener('wheel', onWheel, passive);
+      container.removeEventListener('mousedown', onTouchDown);
       window.removeEventListener('mousemove', onTouchMove);
       window.removeEventListener('mouseup', onTouchUp);
-      window.removeEventListener('touchstart', onTouchDown);
-      window.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchstart', onTouchDown, passive);
+      container.removeEventListener('touchmove', onTouchMove, passive);
       window.removeEventListener('touchend', onTouchUp);
+      window.removeEventListener('touchcancel', onTouchUp);
       if (gl.canvas.parentNode) gl.canvas.parentNode.removeChild(gl.canvas);
     }
   };
@@ -255,24 +269,57 @@ async function buildApp(container, options) {
 
 export default function CircularGallery({ items, bend = 1, textColor = '#ffffff', borderRadius = 0.05, font = 'bold 24px sans-serif', scrollSpeed = 1.6, scrollEase = 0.05 }) {
   const containerRef = useRef(null);
+  const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || !items?.length) return;
-    let app;
-    buildApp(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase })
-      .then(instance => { app = instance; })
-      .catch(console.error);
-    return () => app?.destroy();
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const onChange = (e) => setReduced(e.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
   }, []);
+
+  useEffect(() => {
+    if (reduced || !containerRef.current || !items?.length) return;
+    let app;
+    let cancelled = false;
+    buildApp(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase })
+      .then(instance => {
+        if (cancelled) instance.destroy();
+        else app = instance;
+      })
+      .catch(console.error);
+    return () => { cancelled = true; app?.destroy(); };
+  }, [reduced]);
+
+  // Reduced motion: a plain, swipeable row of photos instead of the 3D carousel.
+  if (reduced) {
+    return (
+      <div className="cg-static" role="list">
+        <style>{`
+          .cg-static { display: flex; gap: 12px; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px; }
+          .cg-static img { height: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 16px; scroll-snap-align: center; flex-shrink: 0; }
+        `}</style>
+        {items.map((it, i) => (
+          <img key={i} role="listitem" src={it.image} alt={it.alt || ''} loading="lazy" decoding="async" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <>
       <style>{`
-        .circular-gallery { width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+        .circular-gallery { width: 100%; height: 100%; overflow: hidden; cursor: grab; touch-action: pan-y; }
         .circular-gallery:active { cursor: grabbing; }
         .circular-gallery canvas { display: block; }
       `}</style>
-      <div className="circular-gallery" ref={containerRef} />
+      <div
+        className="circular-gallery"
+        ref={containerRef}
+        role="img"
+        aria-label="Галерия с примерни маникюри — плъзни, за да разгледаш"
+      />
     </>
   );
 }

@@ -1,56 +1,50 @@
-import { bookingsCol } from "../../../lib/firebase";
-import { parse as parseCookie } from "cookie";
-import { addBookingToCalendar } from "../../../lib/calendar";
-
-function authed(req) {
-  const cookies = parseCookie(req.headers.cookie || "");
-  return cookies.adminAuth === process.env.ADMIN_PASSWORD;
-}
+import { requireAdmin, cleanText, EMAIL_RE, TIME_RE } from "../../../lib/security";
+import { createBooking, syncCalendarCreate, BookingError } from "../../../lib/bookingOps";
+import { isValidDateStr, NAIL_LENGTH_PRICES } from "../../../lib/bookingRules";
 
 export default async function handler(req, res) {
-  if (!authed(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!requireAdmin(req, res)) return;
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { name, phone, clientEmail, date, time, services, totalPrice, nailLength, source } = req.body;
+  const b = req.body || {};
+  const name = cleanText(b.name, 80);
+  const phone = cleanText(b.phone, 20) || "—";
+  const clientEmail = cleanText(b.clientEmail, 120).toLowerCase();
+  const date = cleanText(b.date, 10);
+  const time = cleanText(b.time, 5);
+  const nailLength = b.nailLength in NAIL_LENGTH_PRICES ? b.nailLength : null;
+  const rawServices = Array.isArray(b.services) ? b.services : [b.services];
+  const services = rawServices.map(s => cleanText(s, 60)).filter(Boolean).slice(0, 20);
+  const price = Number.parseFloat(b.totalPrice);
+  const source = cleanText(b.source, 20) || "instagram";
 
   if (!name || !date || !time) {
     return res.status(400).json({ error: "Липсват задължителни полета (Име, Дата, Час)" });
   }
-
-  // Check if slot is already taken
-  const snapshot = await bookingsCol()
-    .where("date", "==", date)
-    .where("time", "==", time)
-    .get();
-
-  if (!snapshot.empty) {
-    return res.status(409).json({ error: `Часът ${time} на ${date} вече е зает` });
+  if (!isValidDateStr(date) || !TIME_RE.test(time)) {
+    return res.status(400).json({ error: "Невалидна дата или час" });
+  }
+  if (clientEmail && !EMAIL_RE.test(clientEmail)) {
+    return res.status(400).json({ error: "Невалиден имейл" });
   }
 
-  const docRef = await bookingsCol().add({
-    name,
-    phone: phone || "—",
-    clientEmail: clientEmail || "",
-    date,
-    time,
-    services: Array.isArray(services) ? services : [services],
-    totalPrice: totalPrice || "0",
-    nailLength: nailLength || null,
-    source: source || "instagram",
-    createdAt: new Date().toISOString(),
-  });
+  const booking = {
+    name, phone, clientEmail, date, time,
+    services: services.length ? services : ["Instagram резервация"],
+    totalPrice: Number.isFinite(price) && price >= 0 ? price.toFixed(2) : "0.00",
+    nailLength, source,
+  };
 
-  // Add to Google Calendar
-  const calEventId = await addBookingToCalendar({
-    name, phone: phone || "—", date, time,
-    services: Array.isArray(services) ? services : [services],
-    totalPrice: totalPrice || "0",
-    nailLength: nailLength || null,
-  });
-  if (calEventId) {
-    await docRef.update({ calEventId });
+  try {
+    const { id } = await createBooking(booking);
+    await syncCalendarCreate(id, booking);
+    return res.status(200).json({ id });
+  } catch (err) {
+    if (err instanceof BookingError) {
+      const msg = err.code === "ALREADY_BOOKED" ? `Часът ${time} на ${date} вече е зает` : err.message;
+      return res.status(err.status).json({ error: msg });
+    }
+    console.error("Manual booking error:", err);
+    return res.status(500).json({ error: "Грешка при запазването" });
   }
-
-  return res.status(200).json({ id: docRef.id });
 }
-

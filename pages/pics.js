@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // Each folder with its images — first image is the grid preview
 const FOLDERS = [
@@ -26,7 +27,13 @@ export default function Pics() {
   const openLightbox = (folderIndex, imgIndex = 0) => {
     setLightbox({ folderIndex, imgIndex });
   };
-  const closeLightbox = () => setLightbox(null);
+  const lastTrigger = useRef(null);
+  const closeRef = useRef(null);
+  const closeLightbox = () => {
+    setLightbox(null);
+    // Return focus to the photo that opened the lightbox.
+    requestAnimationFrame(() => lastTrigger.current?.focus());
+  };
 
   const prev = useCallback(() => {
     if (!lightbox) return;
@@ -55,7 +62,13 @@ export default function Pics() {
       if (e.key === "Escape") closeLightbox();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    closeRef.current?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [lightbox, next, prev]);
 
   const currentFolder = lightbox ? FOLDERS[lightbox.folderIndex] : null;
@@ -65,11 +78,13 @@ export default function Pics() {
   return (
     <>
       <Head>
-        <title>Gallery – PavNailedIt</title>
+        <title>Галерия – PavNailedIt</title>
+        <meta name="description" content="Галерия с маникюри и nail art от PavNailedIt, Пловдив." />
+        <meta property="og:title" content="Галерия – PavNailedIt" />
+        <meta property="og:image" content="https://pavnailed.it/nails/1/nail1.jpg" />
       </Head>
 
       <style jsx>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         .page {
           min-height: 100vh;
@@ -89,20 +104,19 @@ export default function Pics() {
           top: 0;
           z-index: 50;
         }
-        .logo {
+        :global(.logo) {
           font-family: 'Cormorant Garamond', serif;
           font-size: 1.6rem;
           font-weight: 600;
-          color: var(--pink-deep);
-          text-decoration: none;
+          color: var(--accent);
         }
-        .back {
-          color: var(--text-light);
-          font-size: 0.9rem;
+        :global(.back) {
+          display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.5rem;
+          color: var(--text-mid);
+          font-size: 0.95rem;
           transition: color 0.2s;
-          text-decoration: none;
         }
-        .back:hover { color: var(--pink-deep); }
+        :global(.back):hover { color: var(--accent); }
 
         /* HERO */
         .hero {
@@ -118,9 +132,9 @@ export default function Pics() {
         }
         .hero h1 em { color: var(--pink-deep); font-style: italic; }
         .hero p {
-          color: var(--text-light);
+          color: var(--text-mid);
           margin-top: 0.6rem;
-          font-size: 0.9rem;
+          font-size: 1rem;
           letter-spacing: 0.5px;
         }
 
@@ -144,28 +158,26 @@ export default function Pics() {
           overflow: hidden;
           cursor: pointer;
           box-shadow: 0 4px 15px rgba(249,161,194,0.15);
-          transition: transform 0.3s, box-shadow 0.3s;
+          transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
           background: #f0dde6;
+          border: 0;
+          padding: 0;
+          width: 100%;
+          display: block;
         }
         .grid-item:hover {
           transform: scale(1.04);
           box-shadow: 0 12px 35px rgba(249,161,194,0.4);
         }
-        .grid-item img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          transition: transform 0.4s;
-        }
-        .grid-item:hover img { transform: scale(1.06); }
+        .grid-item :global(img) { transition: transform 0.4s var(--ease-out); }
+        .grid-item:hover :global(img) { transform: scale(1.06); }
 
         /* Badge showing how many extra pics */
         .more-badge {
           position: absolute;
           bottom: 10px;
           right: 10px;
-          background: rgba(255,110,196,0.85);
+          background: rgba(194,24,91,0.9);
           color: #fff;
           font-size: 0.75rem;
           font-weight: 700;
@@ -208,13 +220,13 @@ export default function Pics() {
           justify-content: center;
         }
 
-        .lb-img {
+        .lb-img-wrap :global(.lb-img) {
           max-height: 78vh;
           max-width: 100%;
           border-radius: 20px;
           object-fit: contain;
           box-shadow: 0 30px 80px rgba(0,0,0,0.6);
-          animation: zoomIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+          animation: zoomIn 0.25s var(--ease-out);
         }
         @keyframes zoomIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -237,7 +249,6 @@ export default function Pics() {
           backdrop-filter: blur(6px);
           transition: background 0.2s, transform 0.2s;
           z-index: 10;
-          outline: none;
         }
         .lb-arrow:hover { background: rgba(249,161,194,0.5); transform: translateY(-50%) scale(1.1); }
         .lb-arrow.left  { left: -24px; }
@@ -254,18 +265,21 @@ export default function Pics() {
           align-items: center;
         }
         .lb-dot {
-          width: 8px;
-          height: 8px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.3);
+          background: transparent;
           border: none;
           cursor: pointer;
           padding: 0;
-          transition: background 0.2s, transform 0.2s;
-          outline: none;
+          display: flex; align-items: center; justify-content: center;
         }
-        .lb-dot.active {
-          background: #ff6ec4;
+        .lb-dot::before {
+          content: ''; width: 8px; height: 8px; border-radius: 50%;
+          background: rgba(255,255,255,0.4); transition: background 0.2s, transform 0.2s;
+        }
+        .lb-dot.active::before {
+          background: #f8b7d1;
           transform: scale(1.4);
         }
 
@@ -277,8 +291,8 @@ export default function Pics() {
           background: rgba(255,255,255,0.1);
           border: none;
           color: #fff;
-          width: 42px;
-          height: 42px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
           font-size: 1.4rem;
           cursor: pointer;
@@ -288,7 +302,6 @@ export default function Pics() {
           backdrop-filter: blur(6px);
           transition: background 0.2s;
           z-index: 1001;
-          outline: none;
           line-height: 1;
         }
         .lb-close:hover { background: rgba(255,110,196,0.4); }
@@ -305,50 +318,72 @@ export default function Pics() {
           <Link href="/" className="back">← Назад</Link>
         </header>
 
-        <div className="hero">
-          <h1>Gallery <em>💅</em></h1>
-          <p>Click any design to view full set</p>
-        </div>
+        <main>
+          <div className="hero">
+            <h1>Галерия</h1>
+            <p>Натисни върху дизайн, за да видиш всички снимки</p>
+          </div>
 
-        {/* GRID — one card per folder, shows first image as preview */}
-        <div className="grid">
-          {FOLDERS.map((folder, fi) => (
-            <div
-              key={folder.id}
-              className="grid-item"
-              onClick={() => openLightbox(fi, 0)}
-            >
-              <img src={folder.images[0]} alt={`Nail design ${folder.id}`} loading="lazy" />
-              {folder.images.length > 1 && (
-                <span className="more-badge">+{folder.images.length - 1}</span>
-              )}
-            </div>
-          ))}
-        </div>
+          {/* GRID — one card per folder, shows first image as preview */}
+          <ul className="grid" role="list">
+            {FOLDERS.map((folder, fi) => (
+              <li key={folder.id} style={{ listStyle: "none" }}>
+                <button
+                  type="button"
+                  className="grid-item"
+                  onClick={(e) => { lastTrigger.current = e.currentTarget; openLightbox(fi, 0); }}
+                  aria-label={`Дизайн ${folder.id}${folder.images.length > 1 ? `, ${folder.images.length} снимки` : ""}`}
+                >
+                  <Image
+                    src={folder.images[0]}
+                    alt=""
+                    fill
+                    sizes="(max-width: 500px) 50vw, (max-width: 800px) 33vw, (max-width: 1100px) 25vw, 220px"
+                    style={{ objectFit: "cover" }}
+                  />
+                  {folder.images.length > 1 && (
+                    <span className="more-badge" aria-hidden="true">+{folder.images.length - 1}</span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </main>
       </div>
 
       {/* LIGHTBOX */}
       {lightbox && (
-        <div className="lb-overlay" onClick={closeLightbox}>
-          <button className="lb-close" onClick={closeLightbox}>×</button>
+        <div
+          className="lb-overlay"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Дизайн ${currentFolder.id}, снимка ${lightbox.imgIndex + 1} от ${currentFolder.images.length}`}
+        >
+          <button className="lb-close" onClick={closeLightbox} aria-label="Затвори" ref={closeRef}>×</button>
 
           <div className="lb-inner" onClick={e => e.stopPropagation()}>
             <div className="lb-img-wrap">
               {/* Left arrow */}
               {hasMultiple && (
-                <button className="lb-arrow left" onClick={prev}>‹</button>
+                <button className="lb-arrow left" onClick={prev} aria-label="Предишна снимка">‹</button>
               )}
 
-              <img
+              <Image
                 key={currentImg} // re-triggers animation on change
                 className="lb-img"
                 src={currentImg}
-                alt="Nail design"
+                alt={`Дизайн ${currentFolder.id}, снимка ${lightbox.imgIndex + 1}`}
+                width={1080}
+                height={1350}
+                sizes="(max-width: 860px) 100vw, 820px"
+                style={{ width: "auto", height: "auto" }}
+                priority
               />
 
               {/* Right arrow */}
               {hasMultiple && (
-                <button className="lb-arrow right" onClick={next}>›</button>
+                <button className="lb-arrow right" onClick={next} aria-label="Следваща снимка">›</button>
               )}
             </div>
 
@@ -359,6 +394,8 @@ export default function Pics() {
                   <button
                     key={i}
                     className={`lb-dot ${i === lightbox.imgIndex ? "active" : ""}`}
+                    aria-label={`Снимка ${i + 1}`}
+                    aria-current={i === lightbox.imgIndex ? "true" : undefined}
                     onClick={() => setLightbox(lb => ({ ...lb, imgIndex: i }))}
                   />
                 ))}

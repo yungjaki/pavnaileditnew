@@ -1,20 +1,15 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import heroImg from "../public/nails/2/nail1.jpg";
+
 const CircularGallery = dynamic(() => import("../components/CircularGallery"), { ssr: false });
 
-const GALLERY_PREVIEW = [
-  { image: "/nails/1/nail1.jpg", text: "" },
-  { image: "/nails/2/nail1.jpg", text: "" },
-  { image: "/nails/3/nail1.jpg", text: "" },
-  { image: "/nails/4/nail1.jpg", text: "" },
-  { image: "/nails/5/nail1.jpg", text: "" },
-  { image: "/nails/6/nail1.jpg", text: "" },
-  { image: "/nails/7/nail1.jpg", text: "" },
-  { image: "/nails/8/nail1.jpg", text: "" },
-];
+const GALLERY_PREVIEW = [1, 2, 3, 4, 5, 6, 7, 8].map(n => ({
+  image: `/nails/${n}/nail1.jpg`, text: "", alt: `Маникюр ${n}`,
+}));
 
 const REVIEWS = [
   { text: "Тя е истински професионалист и работи с огромно желание и любов, а резултатите са зашеметяващи! Препоръчвам я с две ръце ❤️❤️", author: "Ивка" },
@@ -30,39 +25,52 @@ const TIPS = [
   "💅 Давай почивка между гел маникюри за възстановяване на плочката.",
 ];
 
-function hasActiveBooking() {
-  if (typeof window === "undefined") return false;
-  const id = localStorage.getItem("pavBooking");
-  const date = localStorage.getItem("pavBookingDate");
-  const time = localStorage.getItem("pavBookingTime");
-  if (!id || !date || !time) return false;
-  const [d, m, y] = date.split(".");
-  const [hh, mm] = time.split(":");
-  const bookingDate = new Date(y, m - 1, d, hh, mm);
-  if (new Date() > bookingDate) {
-    localStorage.removeItem("pavBooking");
-    localStorage.removeItem("pavBookingDate");
-    localStorage.removeItem("pavBookingTime");
-    return false;
+const PHONE_DISPLAY = "+359 87 693 0230";
+const PHONE_LINK = "tel:+359876930230";
+const INSTAGRAM_URL = "https://instagram.com/pav.nailed.it";
+
+function countUpcomingBookings() {
+  try {
+    const now = new Date();
+    return JSON.parse(localStorage.getItem("pavBookings") || "[]").filter(b => {
+      const [d, m, y] = String(b.date).split(".");
+      const [hh, mm] = String(b.time).split(":");
+      return new Date(y, m - 1, d, hh, mm) > now;
+    }).length;
+  } catch {
+    return 0;
   }
-  return true;
 }
 
 export default function Home() {
-  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
-  const [hasBooking, setHasBooking] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [upcoming, setUpcoming] = useState(0);
+  const pageRef = useRef(null);
 
   useEffect(() => {
-    setHasBooking(hasActiveBooking());
-    const onScroll = () => {
-      setScrolled(window.scrollY > 300);
-      setScrollY(window.scrollY);
-    };
-    window.addEventListener("scroll", onScroll);
+    setUpcoming(countUpcomingBookings());
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // Intersection observer for scroll-reveal animations
+    // Parallax writes one CSS variable per frame instead of re-rendering React.
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        setScrolled(y > 300);
+        if (!reduced) pageRef.current?.style.setProperty("--scroll", String(Math.min(y, 1200)));
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Scroll-reveal; with reduced motion everything is simply visible.
+    const els = document.querySelectorAll(".reveal");
+    if (reduced || !("IntersectionObserver" in window)) {
+      els.forEach(el => el.classList.add("revealed"));
+      return () => window.removeEventListener("scroll", onScroll);
+    }
     const observer = new IntersectionObserver(
       (entries) => entries.forEach(e => {
         if (e.isIntersecting) {
@@ -72,619 +80,324 @@ export default function Home() {
       }),
       { threshold: 0.12 }
     );
-    // Small delay so React has finished rendering all .reveal elements
-    const t = setTimeout(() => {
-      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
-    }, 50);
-
+    els.forEach(el => observer.observe(el));
     return () => {
       window.removeEventListener("scroll", onScroll);
-      clearTimeout(t);
       observer.disconnect();
     };
   }, []);
 
-  const handleBookClick = (e) => {
-    if (hasBooking) {
-      e.preventDefault();
-      window.location.href = "/already-booked";
-    }
-  };
-
   return (
     <>
       <Head>
-        <title>PavNailedIt</title>
-        <meta name="description" content="Nail salon booking – PavNailedIt" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>PavNailedIt – маникюр и nail art в Пловдив</title>
+        <meta name="description" content="Модерен гел маникюр и уникален nail art в Пловдив. Разгледай галерията и запази час онлайн за минута." />
+        <meta property="og:title" content="PavNailedIt – маникюр в Пловдив" />
+        <meta property="og:description" content="Модерен гел маникюр и уникален nail art. Запази час онлайн." />
+        <meta property="og:image" content="https://pavnailed.it/nails/2/nail1.jpg" />
+        <meta property="og:url" content="https://pavnailed.it/" />
+        <link rel="canonical" href="https://pavnailed.it/" />
       </Head>
 
       <style jsx>{`
         .page {
+          --scroll: 0;
           min-height: 100vh;
-          background: linear-gradient(
-            135deg,
-            #fff5f8,
-            #fdeef5,
-            #fff0fa,
-            #fdf5ee,
-            #fff5f8
-          );
-          background-size: 400% 400%;
-          animation: gradientShift 14s ease infinite;
-        }
-        @keyframes gradientShift {
-          0%   { background-position: 0% 50%; }
-          25%  { background-position: 100% 50%; }
-          50%  { background-position: 100% 0%; }
-          75%  { background-position: 0% 100%; }
-          100% { background-position: 0% 50%; }
+          background: linear-gradient(160deg, #fff5f8, #fdeef5 40%, #fdf5ee);
         }
 
         /* ── SCROLL REVEAL ── */
-        .reveal {
-          opacity: 0;
-          transform: translateY(36px);
-          transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
-        }
-        .reveal.revealed {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        .reveal-delay-1 { transition-delay: 0.1s; }
-        .reveal-delay-2 { transition-delay: 0.2s; }
-        .reveal-delay-3 { transition-delay: 0.3s; }
+        .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out); }
+        .reveal.revealed { opacity: 1; transform: none; }
+        .reveal-delay-1 { transition-delay: 0.08s; }
+        .reveal-delay-2 { transition-delay: 0.16s; }
+        .reveal-delay-3 { transition-delay: 0.24s; }
 
         /* ── HEADER ── */
         header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1.2rem 3rem;
-          position: sticky;
-          top: 0;
-          background: rgba(253,245,248,0.88);
-          backdrop-filter: blur(14px);
-          z-index: 100;
+          display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+          padding: 0.9rem 3rem; position: sticky; top: 0; z-index: 100;
+          background: rgba(253,245,248,0.92); backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(249,161,194,0.2);
         }
-        .logo {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 1.8rem;
-          font-weight: 600;
-          color: var(--pink-deep);
-          letter-spacing: 1px;
+        :global(.logo) { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 600; color: var(--accent); letter-spacing: 0.5px; }
+        nav { display: flex; gap: 0.5rem; }
+        nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.75rem; font-size: 0.85rem; letter-spacing: 1px; font-weight: 500; color: var(--text-mid); text-transform: uppercase; border-radius: 10px; transition: color 0.2s; }
+        nav a:hover { color: var(--accent); }
+        .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+        :global(.my-bookings) { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.9rem; font-size: 0.85rem; font-weight: 600; color: var(--accent); border-radius: 999px; border: 1.5px solid rgba(194,24,91,0.35); }
+        :global(.btn-pill) {
+          display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+          background: var(--accent); color: #fff; padding: 0.7rem 1.8rem; border-radius: 999px;
+          font-size: 0.95rem; font-weight: 700; letter-spacing: 1px;
+          transition: background 0.2s, transform 0.2s var(--ease-out), box-shadow 0.2s;
+          box-shadow: 0 6px 20px rgba(194,24,91,0.28); white-space: nowrap;
         }
-        nav { display: flex; gap: 2rem; }
-        nav a {
-          font-size: 0.82rem;
-          letter-spacing: 1.5px;
-          font-weight: 500;
-          color: var(--text-mid);
-          transition: color 0.2s;
-          text-transform: uppercase;
-        }
-        nav a:hover { color: var(--pink-deep); }
-
-        /* ── THE BIG BOOK NOW BUTTON ── */
-        .btn-book-pill {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #f8b7d1, #f06aad);
-          color: #fff;
-          padding: 0.75rem 2.2rem;
-          border-radius: 999px;
-          font-size: 0.95rem;
-          font-weight: 700;
-          letter-spacing: 1.5px;
-          text-transform: uppercase;
-          text-decoration: none;
-          transition: all 0.25s;
-          box-shadow: 0 6px 22px rgba(240,106,173,0.4);
-          border: none;
-          cursor: pointer;
-          white-space: nowrap;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .btn-book-pill:hover {
-          background: linear-gradient(135deg, #f49cc0, #e0559e);
-          transform: scale(1.06);
-          box-shadow: 0 10px 30px rgba(240,106,173,0.58);
-          color: #fff;
-        }
+        :global(.btn-pill):hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(194,24,91,0.36); color: #fff; }
 
         /* ── HERO ── */
         .hero {
-          min-height: 88vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
+          display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 4rem;
+          max-width: 1120px; margin: 0 auto; min-height: calc(100vh - 80px); padding: 3rem 3rem 4rem;
           position: relative;
-          overflow: hidden;
-          padding: 4rem 2rem;
         }
-        .hero::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(248,183,209,0.28) 0%, transparent 70%);
-          pointer-events: none;
+        .hero-blob {
+          position: absolute; border-radius: 50%; pointer-events: none; z-index: 0;
+          transform: translateY(calc(var(--scroll) * 0.2px));
         }
-        .hero-content { position: relative; z-index: 1; max-width: 700px; }
-        .hero-eyebrow {
-          display: inline-block;
-          background: rgba(249,161,194,0.15);
-          color: var(--pink-deep);
-          padding: 0.4rem 1.2rem;
-          border-radius: 50px;
-          font-size: 0.78rem;
-          letter-spacing: 2px;
-          font-weight: 500;
-          text-transform: uppercase;
-          margin-bottom: 1.5rem;
-          border: 1px solid rgba(249,161,194,0.3);
-        }
+        .blob-1 { width: 520px; height: 520px; top: -140px; left: -160px; background: radial-gradient(circle, rgba(249,161,194,0.22) 0%, transparent 70%); }
+        .blob-2 { width: 420px; height: 420px; bottom: -80px; right: -120px; background: radial-gradient(circle, rgba(255,110,196,0.12) 0%, transparent 70%); transform: translateY(calc(var(--scroll) * -0.12px)); }
+        .hero-content { position: relative; z-index: 1; }
         .hero h1 {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(3rem, 8vw, 6rem);
-          font-weight: 300;
-          line-height: 1.1;
-          color: var(--text-dark);
-          margin-bottom: 1.5rem;
-          letter-spacing: -1px;
+          font-family: 'Cormorant Garamond', serif; font-size: clamp(3rem, 7vw, 5.6rem);
+          font-weight: 300; line-height: 1.02; color: var(--text-dark); margin-bottom: 1.5rem; letter-spacing: -0.02em;
+          text-wrap: balance;
         }
-        .hero h1 em { color: var(--pink-deep); font-style: italic; }
-        .hero p {
-          font-size: 1.05rem;
-          color: var(--text-light);
-          max-width: 440px;
-          margin: 0 auto 2.5rem;
-          font-weight: 300;
-          line-height: 1.7;
+        .hero h1 em { color: var(--accent); font-style: italic; }
+        .hero-lead { font-size: 1.15rem; color: var(--text-mid); max-width: 30rem; margin-bottom: 2.25rem; line-height: 1.7; }
+        .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; }
+        :global(.hero-cta) {
+          display: inline-flex; align-items: center; justify-content: center; min-height: 60px;
+          background: var(--accent); color: #fff; padding: 1.1rem 3.2rem; border-radius: 999px;
+          font-size: 1.15rem; font-weight: 700; letter-spacing: 1.5px;
+          transition: background 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s;
+          box-shadow: 0 12px 34px rgba(194,24,91,0.32);
         }
-        /* Hero CTA — big pink pill button */
-        .hero-cta {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #f8b7d1, #f06aad);
-          color: #fff;
-          padding: 1.25rem 4.5rem;
-          border-radius: 999px;
-          font-size: 1.2rem;
-          font-weight: 700;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          text-decoration: none;
-          transition: all 0.3s ease;
-          box-shadow: 0 12px 40px rgba(240,106,173,0.4);
-          border: none;
-          cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
+        :global(.hero-cta):hover { background: var(--accent-hover); transform: translateY(-3px); box-shadow: 0 18px 44px rgba(194,24,91,0.4); color: #fff; }
+        :global(.hero-link) { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-mid); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+        :global(.hero-link):hover { color: var(--accent); }
+        .hero-place { margin-top: 2rem; font-size: 0.95rem; color: var(--text-light); }
+        .hero-photo {
+          position: relative; z-index: 1; border-radius: 220px 220px 28px 28px; overflow: hidden;
+          aspect-ratio: 4 / 5; box-shadow: 0 30px 60px rgba(150,60,100,0.22);
+          transform: translateY(calc(var(--scroll) * -0.06px));
         }
-        .hero-cta:hover {
-          background: linear-gradient(135deg, #f49cc0, #e0559e);
-          transform: translateY(-4px) scale(1.05);
-          box-shadow: 0 18px 50px rgba(240,106,173,0.58);
-          color: #fff;
-        }
-
-        /* Parallax blobs */
-        .parallax-blob {
-          position: absolute;
-          border-radius: 50%;
-          pointer-events: none;
-          will-change: transform;
-        }
-        .blob-1 {
-          width: 500px; height: 500px;
-          top: -120px; left: -100px;
-          background: radial-gradient(circle, rgba(249,161,194,0.18) 0%, transparent 70%);
-        }
-        .blob-2 {
-          width: 400px; height: 400px;
-          top: 60px; right: -80px;
-          background: radial-gradient(circle, rgba(255,110,196,0.12) 0%, transparent 70%);
-        }
-        .blob-3 {
-          width: 300px; height: 300px;
-          bottom: -60px; left: 30%;
-          background: radial-gradient(circle, rgba(248,183,209,0.2) 0%, transparent 70%);
-        }
-        /* Floating emoji decorations */
-        .parallax-float {
-          position: absolute;
-          pointer-events: none;
-          will-change: transform;
-          user-select: none;
-          line-height: 1;
-        }
-        .float-1 { font-size: 2.5rem; top: 18%; left: 8%;  opacity: 0.6; }
-        .float-2 { font-size: 1.8rem; top: 25%; right: 10%; opacity: 0.5; }
-        .float-3 { font-size: 2rem;   bottom: 28%; left: 12%; opacity: 0.45; }
-        .float-4 { font-size: 1.5rem; bottom: 32%; right: 8%; opacity: 0.5; }
-        @media (max-width: 600px) {
-          .float-1, .float-2, .float-3, .float-4 { display: none; }
+        @media (max-width: 860px) {
+          .hero { grid-template-columns: 1fr; gap: 2.5rem; min-height: 0; padding: 2.5rem 1.25rem 3.5rem; text-align: center; }
+          .hero-lead { margin-left: auto; margin-right: auto; }
+          .hero-actions { justify-content: center; }
+          .hero-photo { max-width: 360px; width: 100%; margin: 0 auto; border-radius: 180px 180px 24px 24px; }
         }
 
         /* ── SECTIONS ── */
         section { padding: 5rem 2rem; max-width: 1000px; margin: 0 auto; }
-        section h2 {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(2rem, 4vw, 3.5rem);
-          font-weight: 300;
-          margin-bottom: 2rem;
-          color: var(--text-dark);
-        }
-        .section-divider {
-          width: 60px; height: 2px;
-          background: linear-gradient(90deg, var(--pink-soft), var(--pink-deep));
-          margin: 0 auto 2rem;
-          border-radius: 2px;
-        }
+        section h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem, 4vw, 3.5rem); font-weight: 300; margin-bottom: 1rem; color: var(--text-dark); }
+        .section-divider { width: 60px; height: 2px; background: var(--pink-mid); margin: 0 auto; border-radius: 2px; }
         .section-title-wrap { text-align: center; margin-bottom: 3rem; }
 
-        /* ABOUT */
-        .about-box {
-          background: #fff;
-          border-radius: var(--radius);
-          padding: 3rem;
-          box-shadow: var(--shadow);
-          text-align: center;
-          border: 1px solid rgba(249,161,194,0.15);
-        }
-        .about-box p { color: var(--text-mid); font-size: 1.05rem; font-weight: 300; line-height: 1.8; }
-        .surprise-box {
-          background: linear-gradient(135deg, #fff0f6, #ffe0eb);
-          border-radius: 15px;
-          padding: 1.5rem 2rem;
-          margin-top: 2rem;
-          border: 1px solid rgba(249,161,194,0.3);
-        }
-        .surprise-box h3 {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 1rem;
-          font-weight: 600;
-          color: var(--pink-deep);
-          margin-bottom: 0.5rem;
-        }
-        .surprise-box p { color: var(--text-mid); font-size: 0.95rem; }
+        .about-box { background: #fff; border-radius: var(--radius); padding: 3rem; box-shadow: var(--shadow); text-align: center; border: 1px solid rgba(249,161,194,0.15); }
+        .about-box p { color: var(--text-mid); font-size: 1.1rem; line-height: 1.8; max-width: 60ch; margin: 0 auto; }
+        .surprise-box { background: linear-gradient(135deg, #fff0f6, #ffe0eb); border-radius: 15px; padding: 1.5rem 2rem; margin-top: 2rem; }
+        .surprise-box h3 { font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
+        .surprise-box p { font-size: 0.98rem; }
 
-        /* LATE POLICY */
-        .policy-box {
-          background: #fff;
-          border-radius: var(--radius);
-          padding: 2.5rem;
-          box-shadow: var(--shadow);
-          border-left: 4px solid var(--pink-mid);
-        }
+        .policy-box { background: #fff; border-radius: var(--radius); padding: 2.5rem; box-shadow: var(--shadow); border: 1px solid rgba(249,161,194,0.2); }
         .policy-box p { color: var(--text-mid); margin-bottom: 1rem; }
         .policy-box ul { list-style: none; padding: 0; }
-        .policy-box li {
-          padding: 0.7rem 0;
-          border-bottom: 1px solid var(--pink-light);
-          color: var(--text-mid);
-          font-size: 0.95rem;
-        }
+        .policy-box li { padding: 0.8rem 0; border-bottom: 1px solid var(--pink-light); color: var(--text-mid); font-size: 1rem; }
         .policy-box li:last-child { border-bottom: none; }
 
-        /* GALLERY */
-        .gallery-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1rem;
-          margin-bottom: 2rem;
-        }
-        @media (min-width: 600px) { .gallery-grid { grid-template-columns: repeat(4, 1fr); } }
-        .gallery-img {
-          width: 100%;
-          aspect-ratio: 1;
-          object-fit: cover;
-          border-radius: 15px;
-          transition: transform 0.3s, box-shadow 0.3s;
-          cursor: pointer;
-        }
-        .gallery-img:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(249,161,194,0.4); }
-        .gallery-3d-wrap {
-          height: 480px;
-          position: relative;
-          margin-bottom: 2rem;
-          border-radius: 20px;
-          overflow: hidden;
-        }
-        @media (max-width: 768px) { .gallery-3d-wrap { height: 320px; } }
+        .gallery-3d-wrap { height: 480px; position: relative; margin-bottom: 2rem; border-radius: 20px; overflow: hidden; }
+        @media (max-width: 768px) { .gallery-3d-wrap { height: 340px; } }
         .see-more-wrap { text-align: center; }
-        .see-more {
-          display: inline-block;
-          border: 2px solid var(--pink-mid);
-          color: var(--pink-deep);
-          padding: 0.7rem 2rem;
-          border-radius: 50px;
-          font-weight: 600;
-          font-size: 0.9rem;
-          transition: all 0.3s;
-          letter-spacing: 0.5px;
-        }
-        .see-more:hover { background: var(--pink-mid); color: #fff; }
+        :global(.see-more) { display: inline-flex; align-items: center; min-height: 48px; border: 2px solid var(--accent); color: var(--accent); padding: 0.7rem 2rem; border-radius: 50px; font-weight: 600; font-size: 0.95rem; transition: background 0.2s, color 0.2s; }
+        :global(.see-more):hover { background: var(--accent); color: #fff; }
 
-        /* REVIEWS */
         .reviews-grid { display: grid; gap: 1.5rem; }
         @media (min-width: 700px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }
-        .review-card {
-          background: #fff;
-          border-radius: var(--radius);
-          padding: 2rem;
-          box-shadow: var(--shadow);
-          border: 1px solid rgba(249,161,194,0.15);
-          transition: transform 0.3s;
-        }
-        .review-card:hover { transform: translateY(-5px); }
-        .review-card p { color: var(--text-mid); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.2rem; font-style: italic; }
-        .review-footer { display: flex; justify-content: space-between; align-items: center; }
-        .stars { color: var(--pink-deep); font-size: 1rem; }
-        .review-author { color: var(--text-light); font-size: 0.85rem; font-weight: 500; }
+        .review-card { background: #fff; border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow); border: 1px solid rgba(249,161,194,0.15); margin: 0; }
+        .review-card blockquote { color: var(--text-mid); font-size: 1rem; line-height: 1.7; margin: 0 0 1.2rem; font-style: italic; }
+        .review-card figcaption { display: flex; justify-content: space-between; align-items: center; }
+        .stars { color: var(--accent); font-size: 1rem; }
+        .review-author { color: var(--text-mid); font-size: 0.9rem; font-weight: 600; }
 
-        /* TIPS */
-        .tips-list { list-style: none; display: grid; gap: 1rem; }
+        .tips-list { list-style: none; display: grid; gap: 1rem; padding: 0; }
         @media (min-width: 600px) { .tips-list { grid-template-columns: repeat(2, 1fr); } }
-        .tip-item {
-          background: #fff;
-          border-radius: 15px;
-          padding: 1.2rem 1.5rem;
-          font-size: 0.95rem;
-          color: var(--text-mid);
-          box-shadow: 0 4px 15px rgba(249,161,194,0.1);
-          border: 1px solid rgba(249,161,194,0.12);
-          transition: transform 0.2s;
-        }
-        .tip-item:hover { transform: translateY(-3px); }
+        .tip-item { background: #fff; border-radius: 15px; padding: 1.2rem 1.5rem; font-size: 1rem; color: var(--text-mid); box-shadow: 0 4px 15px rgba(249,161,194,0.1); border: 1px solid rgba(249,161,194,0.12); }
 
-        /* CONTACT */
-        .contact-form { display: grid; gap: 1rem; max-width: 600px; margin: 0 auto; }
-        .contact-form input,
-        .contact-form textarea {
-          width: 100%;
-          padding: 0.9rem 1.2rem;
-          border-radius: 15px;
-          border: 1px solid rgba(249,161,194,0.3);
-          background: #fff;
-          font-size: 1rem;
-          color: var(--text-dark);
-          outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .contact-form input:focus,
-        .contact-form textarea:focus {
-          border-color: var(--pink-mid);
-          box-shadow: 0 0 0 3px rgba(249,161,194,0.2);
-        }
-        .contact-form button {
-          background: linear-gradient(135deg, var(--pink-soft), var(--pink-deep));
-          color: #fff;
-          border: none;
-          padding: 1rem;
-          border-radius: 50px;
-          font-size: 1rem;
-          font-weight: 600;
-          transition: all 0.3s;
-          box-shadow: 0 6px 20px rgba(249,161,194,0.4);
-          cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .contact-form button:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(249,161,194,0.6); }
+        .contact-lead { text-align: center; color: var(--text-mid); margin: 0 auto 2rem; max-width: 50ch; font-size: 1.05rem; }
+        .contact-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
+        .contact-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 52px; padding: 0.9rem 1.8rem; border-radius: 999px; font-weight: 700; font-size: 1rem; transition: background 0.2s, color 0.2s, transform 0.2s var(--ease-out); }
+        .contact-btn.primary { background: var(--accent); color: #fff; }
+        .contact-btn.primary:hover { background: var(--accent-hover); transform: translateY(-2px); }
+        .contact-btn.secondary { border: 2px solid var(--accent); color: var(--accent); background: #fff; }
+        .contact-btn.secondary:hover { background: var(--pink-light); }
 
-        /* ── FLOATING BOOK NOW ── */
-        .floating-book {
-          position: fixed;
-          bottom: 28px;
-          left: 50%;
-          transform: translateX(-50%) translateY(80px);
-          background: linear-gradient(135deg, #f8b7d1, #f06aad);
-          color: #fff;
-          padding: 1.1rem 3rem;
-          border-radius: 999px;
-          font-weight: 700;
-          font-size: 1.05rem;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          text-decoration: none;
-          box-shadow: 0 10px 35px rgba(240,106,173,0.5);
-          transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-          z-index: 999;
-          opacity: 0;
-          pointer-events: none;
-          white-space: nowrap;
-          border: none;
-          outline: none;
-          -webkit-appearance: none;
-          appearance: none;
+        :global(.floating-book) {
+          position: fixed; bottom: 24px; left: 50%; z-index: 999;
+          transform: translateX(-50%) translateY(90px); opacity: 0; visibility: hidden;
+          display: inline-flex; align-items: center; min-height: 56px;
+          background: var(--accent); color: #fff; padding: 1rem 2.6rem; border-radius: 999px;
+          font-weight: 700; font-size: 1.05rem; letter-spacing: 1.5px; white-space: nowrap;
+          box-shadow: 0 10px 32px rgba(194,24,91,0.4);
+          transition: transform 0.4s var(--ease-out), opacity 0.3s, visibility 0s linear 0.4s, background 0.2s;
         }
-        .floating-book.show {
-          opacity: 1;
-          pointer-events: auto;
-          transform: translateX(-50%) translateY(0);
-        }
-        .floating-book:hover {
-          background: linear-gradient(135deg, #f49cc0, #e0559e);
-          transform: translateX(-50%) scale(1.07);
-          box-shadow: 0 14px 40px rgba(240,106,173,0.65);
-          color: #fff;
-        }
+        :global(.floating-book.show) { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); transition: transform 0.4s var(--ease-out), opacity 0.3s, background 0.2s; }
+        :global(.floating-book):hover { background: var(--accent-hover); color: #fff; }
 
-        /* FOOTER */
-        footer {
-          text-align: center;
-          padding: 3rem 2rem;
-          background: rgba(249,161,194,0.08);
-          border-top: 1px solid rgba(249,161,194,0.2);
-          color: var(--text-light);
-          font-size: 0.85rem;
-        }
+        footer { text-align: center; padding: 3rem 2rem 6rem; background: rgba(249,161,194,0.08); border-top: 1px solid rgba(249,161,194,0.2); color: var(--text-mid); font-size: 0.9rem; }
+        footer :global(a) { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; display: inline-flex; min-height: 44px; align-items: center; padding: 0 0.25rem; }
 
         @media (max-width: 768px) {
-          header { padding: 1rem 1.5rem; }
+          header { padding: 0.75rem 1rem; }
           nav { display: none; }
+          :global(.logo) { font-size: 1.5rem; }
           .about-box, .policy-box { padding: 2rem 1.5rem; }
-          .btn-book-pill { padding: 0.65rem 1.5rem; font-size: 0.88rem; }
-          .floating-book { font-size: 0.95rem; padding: 1rem 2.2rem; }
+          :global(.btn-pill) { padding: 0.65rem 1.2rem; font-size: 0.88rem; }
+          :global(.my-bookings) { display: none; }
+          section { padding: 4rem 1.25rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .reveal { opacity: 1; transform: none; transition: none; }
+          .hero-blob, .hero-photo { transform: none; }
         }
       `}</style>
 
-      <div className="page">
-        {/* ── HEADER ── */}
+      <div className="page" ref={pageRef}>
         <header>
-          <div className="logo">PavNailedIt</div>
-          <nav>
-            <a href="#about">About</a>
-            <a href="#gallery">Gallery</a>
-            <a href="#reviews">Reviews</a>
-            <a href="#contact">Contact</a>
+          <Link href="/" className="logo" aria-label="PavNailedIt – начало">PavNailedIt</Link>
+          <nav aria-label="Основна навигация">
+            <a href="#about">За мен</a>
+            <a href="#gallery">Галерия</a>
+            <a href="#reviews">Отзиви</a>
+            <a href="#contact">Контакт</a>
           </nav>
-          <button className="btn-book-pill" onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}>
-            BOOK NOW
-          </button>
+          <div className="header-actions">
+            {upcoming > 0 && <Link href="/already-booked" className="my-bookings">Моите часове ({upcoming})</Link>}
+            <Link href="/book" className="btn-pill">Запази час</Link>
+          </div>
         </header>
 
-        {/* ── HERO ── */}
-        <div className="hero">
-          {/* Parallax background blobs */}
-          <div className="parallax-blob blob-1" style={{ transform: `translateY(${scrollY * 0.35}px)` }} />
-          <div className="parallax-blob blob-2" style={{ transform: `translateY(${scrollY * 0.2}px)` }} />
-          <div className="parallax-blob blob-3" style={{ transform: `translateY(${scrollY * 0.5}px)` }} />
-          {/* Floating nail emojis */}
-          <span className="parallax-float float-1" style={{ transform: `translateY(${scrollY * 0.25}px) rotate(${scrollY * 0.04}deg)` }}>💅</span>
-          <span className="parallax-float float-2" style={{ transform: `translateY(${scrollY * 0.4}px) rotate(${-scrollY * 0.03}deg)` }}>✨</span>
-          <span className="parallax-float float-3" style={{ transform: `translateY(${scrollY * 0.15}px) rotate(${scrollY * 0.05}deg)` }}>🌸</span>
-          <span className="parallax-float float-4" style={{ transform: `translateY(${scrollY * 0.3}px) rotate(${-scrollY * 0.02}deg)` }}>💎</span>
-          {/* Content moves slightly slower */}
-          <div className="hero-content" style={{ transform: `translateY(${scrollY * 0.12}px)` }}>
-            <span className="hero-eyebrow">✨ Plovdiv, Bulgaria</span>
-            <h1>
-              Book your<br /><em>appointment</em> 💅🏻
-            </h1>
-            <p>Unique, modern nail art designed just for you. Check availability and book your slot.</p>
-            <button className="hero-cta" onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}>
-              BOOK NOW
-            </button>
-          </div>
-        </div>
-
-        {/* ── ABOUT ── */}
-        <section id="about">
-          <div className="section-title-wrap reveal">
-            <h2>About</h2>
-            <div className="section-divider" />
-          </div>
-          <div className="about-box reveal reveal-delay-1">
-            <p>Здрасти, аз съм Павлина! Страстен маникюрист, специализиран в модерни, стилни и уникални дизайни на нокти.</p>
-            <div className="surprise-box">
-              <h3>☕🍫 Ако решиш да ме изненадаш...</h3>
-              <p>Обожавам топло <strong>Pumpkin Spice Latte</strong> или <strong>Red Redbull</strong> и понякога нещо сладичко като <strong>черен шоколад</strong>. 💖</p>
+        <main>
+          <div className="hero">
+            <div className="hero-blob blob-1" aria-hidden="true" />
+            <div className="hero-blob blob-2" aria-hidden="true" />
+            <div className="hero-content">
+              <h1>Маникюр, <em>създаден</em> за теб</h1>
+              <p className="hero-lead">Модерен гел маникюр и уникален nail art. Виж свободните часове и запази своя за минута.</p>
+              <div className="hero-actions">
+                <Link href="/book" className="hero-cta">Запази час</Link>
+                <Link href="/pics" className="hero-link">Разгледай галерията</Link>
+              </div>
+              <p className="hero-place">Пловдив · по предварителна резервация</p>
+            </div>
+            <div className="hero-photo">
+              <Image
+                src={heroImg}
+                alt="Нежен розов маникюр с черен контур на бадемовидни нокти"
+                fill
+                priority
+                placeholder="blur"
+                sizes="(max-width: 860px) 360px, 480px"
+                style={{ objectFit: "cover", objectPosition: "50% 20%" }}
+              />
             </div>
           </div>
-        </section>
 
-        {/* ── LATE POLICY ── */}
-        <section id="policy">
-          <div className="section-title-wrap reveal">
-            <h2>⏰ Late Policy</h2>
-            <div className="section-divider" />
-          </div>
-          <div className="policy-box reveal reveal-delay-1">
-            <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
-            <ul>
-              <li><strong>10 минути закъснение</strong> → доплащане 5€</li>
-              <li><strong>20 минути+</strong> → часът се <u>отменя</u> без възстановяване</li>
-              <li><strong>3 пъти закъснение</strong> → клиентът <u>повече не се записва</u></li>
-            </ul>
-            <p style={{marginTop: '1rem'}}>⚠️ Моля те, бъди точна – това е уважение към времето ми и към другите клиенти 💖</p>
-          </div>
-        </section>
-
-        {/* ── GALLERY ── */}
-        <section id="gallery">
-          <div className="section-title-wrap reveal">
-            <h2>Gallery</h2>
-            <div className="section-divider" />
-          </div>
-          <div className="gallery-3d-wrap reveal reveal-delay-1">
-            <CircularGallery
-              items={GALLERY_PREVIEW}
-              bend={1}
-              textColor="#ffffff"
-              borderRadius={0.05}
-              scrollSpeed={1.6}
-              scrollEase={0.05}
-            />
-          </div>
-          <div className="see-more-wrap">
-            <Link href="/pics" className="see-more">SEE MORE &gt;</Link>
-          </div>
-        </section>
-
-        {/* ── REVIEWS ── */}
-        <section id="reviews">
-          <div className="section-title-wrap reveal">
-            <h2>Reviews</h2>
-            <div className="section-divider" />
-          </div>
-          <div className="reviews-grid">
-            {REVIEWS.map((r, i) => (
-              <div key={i} className={`review-card reveal reveal-delay-${i + 1}`}>
-                <p>"{r.text}"</p>
-                <div className="review-footer">
-                  <span className="stars">★★★★★</span>
-                  <span className="review-author">— {r.author}</span>
-                </div>
+          <section id="about">
+            <div className="section-title-wrap reveal">
+              <h2>За мен</h2>
+              <div className="section-divider" />
+            </div>
+            <div className="about-box reveal reveal-delay-1">
+              <p>Здрасти, аз съм Павлина! Страстен маникюрист, специализиран в модерни, стилни и уникални дизайни на нокти.</p>
+              <div className="surprise-box">
+                <h3>Ако решиш да ме изненадаш... ☕🍫</h3>
+                <p>Обожавам топло <strong>Pumpkin Spice Latte</strong> или <strong>Red Redbull</strong> и понякога нещо сладичко като <strong>черен шоколад</strong>. 💖</p>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
 
-        {/* ── TIPS ── */}
-        <section id="tips">
-          <div className="section-title-wrap reveal">
-            <h2>🌸 Self-Care Tips</h2>
-            <div className="section-divider" />
-          </div>
-          <ul className="tips-list">
-            {TIPS.map((tip, i) => (
-              <li key={i} className={`tip-item reveal reveal-delay-${(i % 3) + 1}`}>{tip}</li>
-            ))}
-          </ul>
-        </section>
+          <section id="policy">
+            <div className="section-title-wrap reveal">
+              <h2>Правила за закъснение</h2>
+              <div className="section-divider" />
+            </div>
+            <div className="policy-box reveal reveal-delay-1">
+              <p>❤️ Обичам да ти подарявам 100% от вниманието си – затова:</p>
+              <ul>
+                <li><strong>10 минути закъснение</strong> → доплащане 5€</li>
+                <li><strong>20 минути+</strong> → часът се <u>отменя</u> без възстановяване</li>
+                <li><strong>3 пъти закъснение</strong> → клиентът <u>повече не се записва</u></li>
+              </ul>
+              <p style={{ marginTop: "1rem" }}>⚠️ Моля те, бъди точна – това е уважение към времето ми и към другите клиенти 💖</p>
+            </div>
+          </section>
 
-        {/* ── CONTACT ── */}
-        <section id="contact">
-          <div className="section-title-wrap reveal">
-            <h2>Contact</h2>
-            <div className="section-divider" />
-          </div>
-          <p style={{textAlign:'center', color:'var(--text-light)', marginBottom:'2rem'}}>
-            Ако имаш въпроси позвъни на <strong>+359 87 693 0230</strong> или се свържи с мен в Instagram <strong>@pav.nailed.it</strong> 💌
-          </p>
-          <form className="contact-form" onSubmit={e => e.preventDefault()}>
-            <input type="text" placeholder="Your Name" required />
-            <input type="email" placeholder="Your Email" required />
-            <textarea placeholder="Your Message" rows={5} required />
-            <button type="submit">Send Message</button>
-          </form>
-        </section>
+          <section id="gallery">
+            <div className="section-title-wrap reveal">
+              <h2>Галерия</h2>
+              <div className="section-divider" />
+            </div>
+            <div className="gallery-3d-wrap reveal reveal-delay-1">
+              <CircularGallery items={GALLERY_PREVIEW} bend={1} textColor="#ffffff" borderRadius={0.05} scrollSpeed={1.6} scrollEase={0.05} />
+            </div>
+            <div className="see-more-wrap">
+              <Link href="/pics" className="see-more">Виж всички снимки →</Link>
+            </div>
+          </section>
+
+          <section id="reviews">
+            <div className="section-title-wrap reveal">
+              <h2>Отзиви</h2>
+              <div className="section-divider" />
+            </div>
+            <div className="reviews-grid">
+              {REVIEWS.map((r, i) => (
+                <figure key={i} className={`review-card reveal reveal-delay-${i + 1}`}>
+                  <blockquote>„{r.text}“</blockquote>
+                  <figcaption>
+                    <span className="stars" aria-label="5 от 5 звезди">★★★★★</span>
+                    <span className="review-author">— {r.author}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
+
+          <section id="tips">
+            <div className="section-title-wrap reveal">
+              <h2>Съвети за грижа</h2>
+              <div className="section-divider" />
+            </div>
+            <ul className="tips-list">
+              {TIPS.map((tip, i) => (
+                <li key={i} className={`tip-item reveal reveal-delay-${(i % 3) + 1}`}>{tip}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section id="contact">
+            <div className="section-title-wrap reveal">
+              <h2>Контакт</h2>
+              <div className="section-divider" />
+            </div>
+            <p className="contact-lead">Имаш въпрос? Обади ми се или ми пиши в Instagram — отговарям възможно най-бързо. 💌</p>
+            <div className="contact-actions">
+              <a className="contact-btn primary" href={PHONE_LINK}>Обади се: {PHONE_DISPLAY}</a>
+              <a className="contact-btn secondary" href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">Instagram @pav.nailed.it</a>
+            </div>
+          </section>
+        </main>
 
         <footer>
-          <p>© 2025 PavNailedIt · <a href="https://instagram.com/pav.naile.dit" style={{color:'var(--pink-mid)'}}>@pav.nailed.it</a></p>
+          <p>
+            © {new Date().getFullYear()} PavNailedIt ·{" "}
+            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">@pav.nailed.it</a> ·{" "}
+            <Link href="/aftercare">Грижа за ноктите</Link> ·{" "}
+            <Link href="/privacy">Поверителност</Link>
+          </p>
         </footer>
       </div>
 
-      {/* ── FLOATING BOOK NOW (appears on scroll) ── */}
-      <button
+      <Link
+        href="/book"
         className={`floating-book ${scrolled ? "show" : ""}`}
-        onClick={(e) => { handleBookClick(e); if (!hasBooking) router.push("/book"); }}
+        aria-hidden={!scrolled}
+        tabIndex={scrolled ? 0 : -1}
       >
-        BOOK NOW 💅
-      </button>
+        Запази час
+      </Link>
     </>
   );
 }
